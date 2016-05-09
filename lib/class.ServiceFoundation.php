@@ -3,13 +3,18 @@
  *
  */
 
-require_once("Models/class.SessionValidator.php");
+require_once('MDB2.php');
+
+//require_once("Models/class.SessionValidator.php");
 require_once("Models/class.TokenValidator.php");
+
 
 class ServiceFoundation extends RESTling {
 
     protected $db;
     protected $configuration;
+
+    protected $tokenValidator;
 
     public function __construct() {
 
@@ -60,14 +65,21 @@ class ServiceFoundation extends RESTling {
             if (array_key_exists("server", $dbCfg)) {
                 $server = $dbCfg["server"];
             }
-            if (array_key_exists("database", $dbCfg)) {
-                $dbname = $dbCfg["database"];
+            if (array_key_exists("name", $dbCfg)) {
+                $dbname = $dbCfg["name"];
             }
 
-            $this->db = new mysqli($server,
-                                   $dbCfg["username"],
-                                   $dbCfg["password"],
-                                   $dbname);
+            $dsn = array("phptype"  => $dbCfg["driver"],
+                         "username" => $dbCfg["user"],
+                         "password" => $dbCfg["pass"],
+                         "hostspec" => $server,
+                         "database" => $dbname);
+
+            $options = array(
+//                "persistent" => true
+            );
+
+            $this->db =& MDB2::factory($dsn,$options);
 
             if ($this->db->connect_errno) {
                 $this->fatal("cannot connect to database");
@@ -76,11 +88,25 @@ class ServiceFoundation extends RESTling {
         }
     }
 
+    /**
+     * @function getHeaderValidationMethods
+     *
+     * This should return an associative array that defines, for which methods
+     * we can skip validation.
+     *
+     * Note: operations that must not get validated need to be present and set to false.
+     */
+    protected function getFreeHeaderValidationMethods() {
+        return array();
+    }
+
     private function initSessionValidator() {
         if ($this->status == RESTling::OK) {
-            $sessionValidator = new SessionValidator($his->db);
-            $tokenValidator   = new OAuth2TokenValidator($this->db);
+//            $sessionValidator = new SessionValidator($his->db);
+            $this->tokenValidator   = new OAuth2TokenValidator($this->db);
+            $this->tokenValidator->setMethods($this->getFreeHeaderValidationMethods());
 
+            $this->addHeaderValidator($this->tokenValidator);
         }
     }
 }
