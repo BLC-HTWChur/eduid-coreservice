@@ -1,0 +1,6 @@
+[database]
+driver = mysqli
+server = 127.0.0.1
+user = eduiduser
+pass = eduidpass
+name = eduid
