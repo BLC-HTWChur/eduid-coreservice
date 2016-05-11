@@ -74,6 +74,7 @@ class OAuth2TokenValidator extends EduIDValidator {
             empty($this->token_type)) {
 
             // nothin to validate
+            $this->log("no token type available");
             return false;
         }
 
@@ -81,12 +82,16 @@ class OAuth2TokenValidator extends EduIDValidator {
             empty($this->token)) {
 
             // no token to validate
+            $this->log("no raw token available");
             return false;
         }
 
-        if (!in_array($this->token_type, $this->accept_list)) {
+        if (!empty($this->accept_list) &&
+            !in_array($this->token_type, $this->accept_list)) {
 
             // the script does not accept the provided token type;
+            $this->log("token type not acecpted available");
+
             return false;
         }
 
@@ -96,6 +101,7 @@ class OAuth2TokenValidator extends EduIDValidator {
         if (!isset($this->token_info["kid"]) ||
             empty($this->token_info["kid"])) {
 
+            $this->log("no token id available");
             // no token id
             return false;
         }
@@ -104,6 +110,7 @@ class OAuth2TokenValidator extends EduIDValidator {
 
         if (!isset($this->token_key)) {
             // token not found
+            $this->log("no token available");
             return false;
         }
 
@@ -116,6 +123,7 @@ class OAuth2TokenValidator extends EduIDValidator {
 
             // consume token
             $this->consumeToken();
+            $this->log("token expired - consume it!");
             return false;
         }
 
@@ -128,6 +136,7 @@ class OAuth2TokenValidator extends EduIDValidator {
                 empty($this->token_info["mac"])) {
 
                 // token is not signed ignore
+                $this->log("token is not signed ignore");
                 return false;
             }
 
@@ -136,6 +145,8 @@ class OAuth2TokenValidator extends EduIDValidator {
                 empty($this->token_info["ts"])) {
 
                 // missing timestamp
+                $this->log("missing timestamp");
+
                 return false;
             }
 
@@ -144,13 +155,18 @@ class OAuth2TokenValidator extends EduIDValidator {
                 empty($this->token_info["seq_nr"]))) {
 
                 // no sequence provided
+                $this->log("missing seq_nr but requested");
+
                 $this->consumeToken();
                 return false;
             }
 
-            if ($this->token_info["seq-nr"] != $this->token_data["seq-nr"]) {
+            if ($this->token_data["seq_nr"] > 0 &&
+                $this->token_info["seq-nr"] != $this->token_data["seq-nr"]) {
                 // out of bounds
                 $this->consumeToken();
+                $this->log("token sequence out of bounds");
+
                 return false;
             }
 
@@ -161,13 +177,18 @@ class OAuth2TokenValidator extends EduIDValidator {
 
                     if ($this->token_info["access_token"] != $this->token_key) {
                         // invalid token during handshake
+                        $this->log("bad token handshake");
+
                         return false;
                     }
                 }
             }
 
             // at this point we have to increase the sequence
-            $this->sequenceStep();
+            if ($this->token_data["seq_nr"] > 0) {
+                $this->sequenceStep();
+                $this->log("seq step");
+            }
 
             // first line is METHOD REQPATH+GETPARAM PROTOCOL VERSION
             // protocol version is (HTTP/1.1 or HTTP/2.0)
@@ -207,11 +228,12 @@ class OAuth2TokenValidator extends EduIDValidator {
                 $payload .= $_SERVER[HTTP_HOST] ."\n";
             }
 
-            $testMac = hash_hmac("sha1", $payload, $this->token_data["mac-key"]);
+            $testMac = hash_hmac("sha1", $payload, $this->token_data["mac_key"]);
 
             if ($testMac != $this->token_info["mac"]) {
 
                 // bad mac
+                $this->log("mac mismatch " . $testMac . " <> " . $this->token_info["mac"]);
                 return false;
             }
         }
@@ -247,8 +269,6 @@ class OAuth2TokenValidator extends EduIDValidator {
 
         $sqlstr = "select " . implode(", ", $aDBFields). " from tokens where token_type = ? and kid = ? and consumed = 0";
 
-        $this->log($sqlstr);
-
         // for bearer and session tokens the token_id is the token_key
         $sth = $this->db->prepare($sqlstr, array("TEXT", "TEXT"));
         $res = $sth->execute(array($this->token_type,
@@ -257,22 +277,23 @@ class OAuth2TokenValidator extends EduIDValidator {
         if (PEAR::isError($res)) {
             $this->log($res->getMessage());
         }
+        else {
+            $this->token_data = null;
+            $this->token_key  = null;
 
-        $this->token_data = null;
-        $this->token_key  = null;
+            if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
+                $this->token_data = array();
 
-        if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
-            $this->token_data = array();
+                foreach ($row as $key => $value) {
+                    $this->token_data[$key] = $value;
+                }
 
-            foreach ($row as $key => $value) {
-                $this->token_data[$key] = $value;
+                $this->token_key = $this->token_data["access_key"];
+                $this->token_data["type"] = $this->token_type;
             }
 
-            $this->token_key = $this->token_data["access_token"];
-            $this->token_data["type"] = $this->token_type;
+            $sth->free();
         }
-
-        $sth->free();
     }
 
     private function consumeToken() {
@@ -289,6 +310,7 @@ class OAuth2TokenValidator extends EduIDValidator {
         if (PEAR::isError($res))
         {
             $this->error = $res->getMessage();
+            $this->log($res->getMessage());
         }
         $sth->free();
 
@@ -301,6 +323,8 @@ class OAuth2TokenValidator extends EduIDValidator {
         if (PEAR::isError($res))
         {
             $this->error = $res->getMessage();
+            $this->log($res->getMessage());
+
         }
         $sth->free();
     }
@@ -314,6 +338,7 @@ class OAuth2TokenValidator extends EduIDValidator {
         if (PEAR::isError($res))
         {
             $this->error = $res->getMessage();
+            $this->log($res->getMessage());
         }
         $sth->free();
     }
