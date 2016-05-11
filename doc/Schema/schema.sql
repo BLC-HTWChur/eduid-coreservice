@@ -47,19 +47,28 @@ create table if not exists sessions
     lastaccess INTEGER
 );
 
-create table if not exists tokens (                -- OAUTH Token store
-    token_id     varchar(255) PRIMARY KEY,         -- shared id (token in Bearer)
-    token_type   varchar(255) NOT NULL,            -- type in [Bearer, Client, MAC]
-    token_key    varchar(255),                     -- private key (only shared once)
-    token_parent varchar(255),                     -- eduID specific OAuth Extension
-    client_id    varchar(255),                     -- client identifier, e.g., device UUID
-    user_uuid      varchar(255),                   -- internal user id if type = Bearer or MAC
-    domain       varchar(255),                     -- reverse identifier of the app
-    extra        TEXT                              -- extra token settings
+create table if not exists tokens (
+    kid varchar(255) PRIMARY KEY,
+    token_type varchar(255) NOT NULL,
+    access_key varchar(255),
+    mac_key varchar(255),
+    mac_algorithm varchar(10),                      -- only hmac-sha-1 or hmac-sha-256
+    seq_nr INTEGER DEFAULT 1,                       -- 0 if no sequence is used
+
+    expires INTEGER DEFAULT 0,
+    consumed INTEGER DEFAULT 0,
+    max_seq INTEGER DEFAULT 0,
+
+    user_uuid varchar(255),                         -- used for federation users
+    service_uuid varchar(255),                      -- used for federation services
+    client_id varchar(255),                         -- used for apps and external services
+
+    parent_kid varchar(255),
+    extra TEXT
 );
 
 create table if not exists services (
-    uuid varchar(255) primary key,
+    service_uuid varchar(255) primary key,
     name varchar(255) not null,
     mainurl varchar(2048) not null,
     rsdurl varchar(2048) not null,
