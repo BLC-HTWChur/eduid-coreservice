@@ -33,7 +33,7 @@ class ServiceFoundation extends RESTling {
     private function loadConfiguration() {
 
         try {
-            $cfgobj = parse_init_file('config/eduid.ini', true);
+            $aCfg = parse_ini_file('config/eduid.ini', true);
         }
         catch (Exception $e) {
             $this->fatal($e->getMessage());
@@ -81,30 +81,17 @@ class ServiceFoundation extends RESTling {
 
             $this->db =& MDB2::factory($dsn,$options);
 
-            if ($this->db->connect_errno) {
+            if (PEAR::isError($this->db)) {
                 $this->fatal("cannot connect to database");
                 $this->status = RESTling::UNINITIALIZED;
             }
         }
     }
 
-    /**
-     * @function getHeaderValidationMethods
-     *
-     * This should return an associative array that defines, for which methods
-     * we can skip validation.
-     *
-     * Note: operations that must not get validated need to be present and set to false.
-     */
-    protected function getFreeHeaderValidationMethods() {
-        return array();
-    }
-
     private function initSessionValidator() {
         if ($this->status == RESTling::OK) {
 //            $sessionValidator = new SessionValidator($his->db);
             $this->tokenValidator   = new OAuth2TokenValidator($this->db);
-            $this->tokenValidator->setMethods($this->getFreeHeaderValidationMethods());
 
             $this->addHeaderValidator($this->tokenValidator);
         }
