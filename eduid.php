@@ -6,7 +6,7 @@
  * *********************************************************************** */
 
 // set the include path so we can find our classes
-set_include_path($cwd ."/lib" . PATH_SEPARATOR .
+set_include_path("./lib" . PATH_SEPARATOR .
                 get_include_path());
 
 // load RESTling
@@ -18,7 +18,15 @@ require_once('class.ServiceFoundation.php');
 // preload the error service
 require_once('Service/class.Error.php');
 
-$serviceName = array_shift(explode("/", $_SERVER["PATH_INFO"]));
+if(array_key_exists("PATH_INFO", $_SERVER)) {
+
+    error_log("found path_info " . $_SERVER["PATH_INFO"]);
+    $pi = explode("/", $_SERVER["PATH_INFO"]);
+    array_shift($pi);
+    $serviceName = array_shift($pi);
+    error_log("got service: " . $serviceName);
+
+}
 
 if (isset($serviceName) && !empty($serviceName)) {
 
@@ -49,6 +57,10 @@ if (isset($serviceName) && !empty($serviceName)) {
 //        case "federation-manager":
 //            $service = new FederationManagerService();
 //            break;
+
+        case "authtest":
+            $service = new AuthTestService();
+            break;
         default:
             $service = new ErrorService();
             break;
