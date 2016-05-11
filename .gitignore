@@ -1,4 +1,3 @@
-
 protocol-discovery.php
 
 config/eduid.json.example
@@ -10,3 +9,4 @@ oauth.php
 service-authorization.php
 
 user-profile.php
+/config/eduid.ini
