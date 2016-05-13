@@ -115,6 +115,7 @@ class OAuth2TokenValidator extends EduIDValidator {
         }
 
         if ($this->token_data["consumed"] > 0) {
+            $this->log("token already consumed");
             return false;
         }
 
@@ -315,7 +316,7 @@ class OAuth2TokenValidator extends EduIDValidator {
         $sth->free();
 
         // consume all children
-        $sqlstr = "update table tokens set consumed = ? where parent_kid = ?";
+        $sqlstr = "update table tokens set consumed = ? where parent_kid = ? and token_type <> 'Refresh'";
         $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
         $res = $sth->execute(array($now,
                                    $key));
