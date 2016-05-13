@@ -51,7 +51,7 @@ create table if not exists tokens (
     kid varchar(255) PRIMARY KEY,
     token_type varchar(255) NOT NULL,
     access_key varchar(255),
-    mac_key varchar(255),
+    mac_key varchar(255),                           -- shared secret
     mac_algorithm varchar(10),                      -- only hmac-sha-1 or hmac-sha-256
     seq_nr INTEGER DEFAULT 1,                       -- 0 if no sequence is used
 
@@ -64,6 +64,7 @@ create table if not exists tokens (
     client_id varchar(255),                         -- used for apps and external services
 
     parent_kid varchar(255),
+    scope TEXT,                                     -- optional value
     extra TEXT
 );
 
