@@ -425,6 +425,18 @@ class TokenManager extends DBManager{
         return $tm;
     }
 
+    public function eraseToken() {
+        if (isset($this->token)) {
+            $sqlstr = "DELETE FROM tokens WHERE kid = ?";
+            $sth = $this->db->prepare($sqlstr, array("TEXT"));
+            $res = $sth->execute(array($this->token["kid"]));
+            if (PEAR::isError($res)) {
+                $this->log($res->getMessage());
+            }
+            $sth->free();
+        }
+    }
+
     protected function randomString($length=10) {
         $resstring = "";
         $chars = "abcdefghijklmnopqrstuvwxyz._ABCDEFGHIJKLNOPQRSTUVWXYZ-1234567890";
