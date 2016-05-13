@@ -18,7 +18,10 @@ class OAuth2TokenValidator extends EduIDValidator {
     public function __construct($db) {
         parent::__construct($db);
         $this->db = $db;
-        $this->accept_list = array("Bearer", "MAC");
+        $this->accept_list = array("Bearer",
+                                   "MAC",
+                                   "Client",
+                                   "Grant");
 
         // check for the authorization header
         $headers = getallheaders();
@@ -60,6 +63,16 @@ class OAuth2TokenValidator extends EduIDValidator {
                     $this->accept_list[] = $tokenType;
                 }
             }
+        }
+    }
+
+    public function resetAcceptedTokens($typeList){
+        if (isset($typeList) && !empty($typeList)) {
+            if (!is_array($typeList)) {
+                $typeList = array($typeList);
+            }
+
+            $this->accept_list = $typeList;
         }
     }
 
