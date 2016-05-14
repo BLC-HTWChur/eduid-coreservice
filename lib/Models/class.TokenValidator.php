@@ -14,6 +14,8 @@ class OAuth2TokenValidator extends EduIDValidator {
     private $token_info;  // provided by the client
     private $token_data;  // provided by the DB
 
+    private $requireUUID = array();
+
     private $accept_type = array();
     private $accept_list = array();
 
@@ -115,6 +117,24 @@ class OAuth2TokenValidator extends EduIDValidator {
             }
 
             $this->accept_type = $typeList;
+        }
+    }
+
+    public function requireUser() {
+        if (!in_array("user_uuid", $this->requireUUID)) {
+            $this->requireUUID[] = "user_uuid";
+        }
+    }
+
+    public function requireService() {
+        if (!in_array("service_uuid", $this->requireUUID)) {
+            $this->requireUUID[] = "service_uuid";
+        }
+    }
+
+    public function requireClient() {
+        if (!in_array("client_id", $this->requireUUID)) {
+            $this->requireUUID[] = "client_id";
         }
     }
 
@@ -311,6 +331,19 @@ class OAuth2TokenValidator extends EduIDValidator {
                     return false;
                 }
             }
+        }
+
+        if (isset($this->token_data) &&
+            !empty($this->token_data)) {
+
+            foreach ($this->requireUUID as $id) {
+                if (array_key_exists($id, $this->token_data) &&
+                    empty($this->token_data[$id])) {
+                    $this->log("required data field is missing");
+                    return false;
+                }
+            }
+
         }
 
         $this->valid = true;
