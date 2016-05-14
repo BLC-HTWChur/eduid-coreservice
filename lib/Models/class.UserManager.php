@@ -14,16 +14,17 @@ class UserManager extends DBManager{
 
         $sqlstr = "SELECT u.user_uuid, u.user_passwd, ui.mailAddress from users u, useridentities ui where ui.user_uuid = u.user_uuid and ui.mailAddress = ?";
         $sth = $this->db->prepare($sqlstr, array("TEXT"));
-        $res = $this->execute(array($mailAddress));
+        $res = $sth->execute(array($mailAddress));
 
         if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
             $this->user = array();
-            $aMap = array("ui.mailAddress" => "mailAddress",
+            $aMap = array("ui.mailaddress" => "mailAddress",
                           "u.user_password" => "user_passwd",
                           "u.user_uuid "=> "user_uuid");
 
-            foreach ($aMap as $k => $v) {
-                $this->user[$v] = $row[$k];
+            foreach ($row as $k => $v) {
+                $this->log( "user data field:  " . $k);
+                $this->user[$k] = $v;
             }
             return true;
         }
@@ -36,12 +37,12 @@ class UserManager extends DBManager{
 
         $sqlstr = "SELECT user_uuid, user_passwd from users where user_uuid = ?";
         $sth = $this->db->prepare($sqlstr, array("TEXT"));
-        $res = $this->execute(array($uuid));
+        $res = $sth->execute(array($uuid));
 
         if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
             $this->user = array();
             $aMap = array("user_passwd",
-                          "user_uuid ");
+                          "user_uuid");
 
             foreach ($aMap as $k) {
                 $this->user[$k] = $row[$k];
@@ -57,7 +58,7 @@ class UserManager extends DBManager{
         if (isset($this->user) && !empty($this->user)) {
 
             $testToken = sha1($key      . "\n".  // request token key
-                              $this->user["mailAddress"] . "\n".  // user email address
+                              $this->user["mailaddress"] . "\n".  // user email address
                               $this->user["user_passwd"] . "\n"); // sha1 encrypted password
 
             if ($authToken == $testToken) {
@@ -70,32 +71,33 @@ class UserManager extends DBManager{
         return false;
     }
 
-    public function loadProfile() {
+    public function loadProfileIdentities() {
         $this->profile = null;
 
         if (isset($this->user) &&
             !empty($this->user) &&
             !empty($this->user["user_uuid"])) {
 
-            $aFields = array("idp_uuid", "userID", "mailAddress", "invalid", "extra");
-            $sqlstr = "select " . implode($aFields) . " from useridentities where user_uuid = ?";
+            $aFields = array("idp_uuid", "userid", "mailaddress", "invalid", "extra");
+            $sqlstr = "select " . implode(",", $aFields) . " from useridentities where user_uuid = ?";
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
             $res = $sth->execute(array($this->user["user_uuid"]));
 
             $this->profile = array();
 
             while ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
-                foreach ($aFields as $f) {
-                    $aProfiles = array();
-                    if (isset($row[$f]) && !empty($row[$f])) {
+                $aProfile = array();
+                foreach ($row as $f => $v) {
+                    if (isset($v) && !empty($v)) {
                         if ($f == "extra") {
-                            $aProfiles[$f] = json_decode($row[$f]);
+                            $aProfile[$f] = json_decode($v);
                         }
                         else {
-                            $aProfiles[$f] = $row[$f];
+                            $aProfile[$f] = $v;
                         }
                     }
                 }
+                $this->profile[] = $aProfile;
             }
 
             $sth->free();
@@ -110,6 +112,9 @@ class UserManager extends DBManager{
     }
 
     public function getAllProfiles() {
+        if (!isset($this->profile)) {
+            $this->loadProfileIdentities();
+        }
         return $this->profile;
     }
 }
