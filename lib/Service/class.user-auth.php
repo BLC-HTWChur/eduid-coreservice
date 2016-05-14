@@ -29,7 +29,7 @@ class UserAuthDataValidator extends EduIDValidator {
             }
 
             // verify that there is a client token
-            $gT = $this->service->getToken();
+            $gT = $this->service->getAuthToken();
             if (!isset($gT) || empty($gT)) {
                 $this->log("no token found");
                 $this->service->forbidden();
@@ -39,7 +39,8 @@ class UserAuthDataValidator extends EduIDValidator {
             // verify that the client is who it clains
             $tChallenge = sha1($gT["access_key"] . $gT["mac_key"]);
             if ($tChallenge != $this->data["challenge"]) {
-                $this->log("bad client challenge");
+
+                $this->log("bad client challenge ");
                 $this->service->forbidden();
                 return false;
             }
@@ -47,7 +48,7 @@ class UserAuthDataValidator extends EduIDValidator {
             // ckeck if we know the requested user
             $this->user = new UserManager($this->db);
 
-            if (!$this->findByMailAddress($this->inputData["username"])) {
+            if (!$this->user->findByMailAddress($this->data["username"])) {
                 $this->log("no user found");
                 $this->service->forbidden();
                 return false;
@@ -95,7 +96,7 @@ class UserAuthService extends ServiceFoundation {
     }
 
     protected function post() {
-        $token = $this->getToken();
+        $token = $this->getAuthToken();
 
         $um = $this->userValidator->getUser();
 

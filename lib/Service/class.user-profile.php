@@ -3,7 +3,7 @@
  *
  * *********************************************************************** */
 
-class UserAuthService extends ServiceFoundation {
+class UserProfileService extends ServiceFoundation {
     protected function initializeRun() {
         $this->tokenValidator->resetAcceptedTokens(array("Bearer", "MAC"));
         $this->tokenValidator->setAcceptedTokenTypes(array("Bearer", "MAC"));
