@@ -101,18 +101,28 @@ class UserAuthService extends ServiceFoundation {
 
         if ($um->authenticate($this->inputData["password"], $token["mac_key"])) {
 
-            $tm = $this->tokenValidator->getTokenIssuer("MAC");
+            $tokenType = "MAC";
+            if (array_key_exists("preferred-token", $this->inputData) &&
+                in_array($this->inputData["preferred-token"], array("Bearer", "MAC"))) {
+
+                $tokenType = $this->inputData["preferred-token"];
+            }
+
+            $tm = $this->tokenValidator->getTokenIssuer($tokenType);
             $tm->addToken(array("user_uuid" => $um->getUUID()));
 
             $ut = $tm->getToken();
 
             $this->data = array(
-                "access_token" => $ut["access_key"],
-                "kid"=> $ut["kid"],
-                "token_type" => "mac",
-                "mac_key" => $ut["mac_key"],
-                "mac_algorithm"=> $ut["mac_algorithm"]
+                "access_token"  => $ut["access_key"],
+                "token_type"    => strtolower($ut["token_type"]),
             );
+
+            if ($tokenType == "MAC") {
+                $this->data["kid"]            =  $ut["kid"];
+                $this->data["mac_key"]        = $ut["mac_key"];
+                $this->data["mac_algorithm"]  =  $ut["mac_algorithm"];
+            }
 
             if (array_key_exists("expires_in", $ut)) {
                 $this->data["expires_in"] = $ut["expires_in"];
