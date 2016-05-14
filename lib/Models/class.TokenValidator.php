@@ -9,19 +9,26 @@ class OAuth2TokenValidator extends EduIDValidator {
 
     private $token;
     private $token_type;  // oauth specific
+    private $token_key;
 
     private $token_info;  // provided by the client
     private $token_data;  // provided by the DB
 
+    private $accept_type = array();
     private $accept_list = array();
 
     public function __construct($db) {
         parent::__construct($db);
-        $this->db = $db;
+
+        // header level
         $this->accept_list = array("Bearer",
                                    "MAC",
-                                   "Client",
-                                   "Grant");
+                                   "Basic");
+        // token level
+        $this->accept_type = array("Bearer",
+                                   "MAC",
+                                   "Grant",
+                                   "Client");
 
         // check for the authorization header
         $headers = getallheaders();
@@ -36,6 +43,31 @@ class OAuth2TokenValidator extends EduIDValidator {
             $this->token_type = $aHeadElems[0];
             $this->token  = $aHeadElems[1];
         }
+    }
+
+    public function getTokenIssuer($type) {
+        require_once("Models/class.TokenManager.php");
+
+        $tm = new TokenManager($this->db, array("type"=> $type));
+        $tm->setRootToken($this->token);
+
+        return $tm;
+    }
+
+    public function getTokenUser() {
+        if (isset($this->token) &&
+            !empty($this->token) &&
+            !empty($this->token["user_uuid"])) {
+
+            require_once("Models/class.UserManager.php");
+
+            $um = new UserManager($this->db);
+            if ($um->findByUUID($this->token["user_uuid"])) {
+                return $um;
+            }
+        }
+
+        return null;
     }
 
     public function ignoreTokenTypes($typeList) {
@@ -73,6 +105,16 @@ class OAuth2TokenValidator extends EduIDValidator {
             }
 
             $this->accept_list = $typeList;
+        }
+    }
+
+    public function setAcceptedTokenTypes($typeList){
+        if (isset($typeList) && !empty($typeList)) {
+            if (!is_array($typeList)) {
+                $typeList = array($typeList);
+            }
+
+            $this->accept_type = $typeList;
         }
     }
 
@@ -132,6 +174,8 @@ class OAuth2TokenValidator extends EduIDValidator {
             return false;
         }
 
+        if (in_array($this->token_type, $this->accept_type))
+
         if ($this->token_data["expires"] > 0 &&
             $this->token_data["expires"] < time()) {
 
@@ -144,48 +188,49 @@ class OAuth2TokenValidator extends EduIDValidator {
         // at this point we have already confirmed or rejected any
         // the bearer token
         if ($this->token_type != "Bearer") {
-            // Run MAC compoarison
-
-            if (!isset($this->token_info["mac"]) ||
-                empty($this->token_info["mac"])) {
-
-                // token is not signed ignore
-                $this->log("token is not signed ignore");
-                return false;
-            }
-
-            // check sequence
-            if (!isset($this->token_info["ts"]) ||
-                empty($this->token_info["ts"])) {
-
-                // missing timestamp
-                $this->log("missing timestamp");
-
-                return false;
-            }
-
-            if ($this->token_data["seq_nr"] > 0 &&
-                (!isset($this->token_info["seq_nr"]) ||
-                empty($this->token_info["seq_nr"]))) {
-
-                // no sequence provided
-                $this->log("missing seq_nr but requested");
-
-                $this->consumeToken();
-                return false;
-            }
-
-            if ($this->token_data["seq_nr"] > 0 &&
-                $this->token_info["seq-nr"] != $this->token_data["seq-nr"]) {
-                // out of bounds
-                $this->consumeToken();
-                $this->log("token sequence out of bounds");
-
-                return false;
-            }
 
             if ($this->token_type == "MAC") {
-                if ($this->token_data["seq-nr"] == 1 &&
+                // Run MAC compoarison
+
+                if (!isset($this->token_info["mac"]) ||
+                    empty($this->token_info["mac"])) {
+
+                    // token is not signed ignore
+                    $this->log("token is not signed ignore");
+                    return false;
+                }
+
+                // check sequence
+                if (!isset($this->token_info["ts"]) ||
+                    empty($this->token_info["ts"])) {
+
+                    // missing timestamp
+                    $this->log("missing timestamp");
+
+                    return false;
+                }
+
+                if ($this->token_data["seq_nr"] > 0 &&
+                    (!isset($this->token_info["seq_nr"]) ||
+                    empty($this->token_info["seq_nr"]))) {
+
+                    // no sequence provided
+                    $this->log("missing seq_nr but requested");
+
+                    $this->consumeToken();
+                    return false;
+                }
+
+                if ($this->token_data["seq_nr"] > 0 &&
+                    $this->token_info["seq_nr"] != $this->token_data["seq_nr"]) {
+                    // out of bounds
+                    $this->consumeToken();
+                    $this->log("token sequence out of bounds");
+
+                    return false;
+                }
+
+                if ($this->token_data["seq_nr"] == 1 &&
                     (!isset($this->token_info["access_token"]) ||
                      empty($this->token_info["access_token"]))) {
 
@@ -196,59 +241,75 @@ class OAuth2TokenValidator extends EduIDValidator {
                         return false;
                     }
                 }
-            }
 
-            // at this point we have to increase the sequence
-            if ($this->token_data["seq_nr"] > 0) {
-                $this->sequenceStep();
-                $this->log("seq step");
-            }
+                // at this point we have to increase the sequence
+                if ($this->token_data["seq_nr"] > 0) {
+                    $this->sequenceStep();
+                    // $this->log("seq step");
+                }
 
-            // first line is METHOD REQPATH+GETPARAM PROTOCOL VERSION
-            // protocol version is (HTTP/1.1 or HTTP/2.0)
-            $payload =  $_SERVER['REQUEST_METHOD'] . " " .
-                        $_SERVER['REQUEST_URI'] . " " .
-                        $_SERVER['SERVER_PROTOCOL']. "\n";
+                // first line is METHOD REQPATH+GETPARAM PROTOCOL VERSION
+                // protocol version is (HTTP/1.1 or HTTP/2.0)
+                $payload =  $_SERVER['REQUEST_METHOD'] . " " .
+                            $_SERVER['REQUEST_URI'] . " " .
+                            $_SERVER['SERVER_PROTOCOL']. "\n";
 
-            $payload .=  $this->token_info["ts"] ."\n";
+                $payload .=  $this->token_info["ts"] ."\n";
 
-            if (array_key_exists("h", $this->token_info)) {
-                $aTokenHeaders  = explode(":");
-                $aRequestHeader = getallheaders();
+                if (array_key_exists("h", $this->token_info)) {
+                    $aTokenHeaders  = explode(":");
+                    $aRequestHeader = getallheaders();
 
-                foreach ($aTokenHeaders as $header) {
-                    switch($header) {
-                        case "host":
-                            $payload .= $_SERVER[HTTP_HOST] ."\n";
-                            break;
-                        case "client":
-                            if (!empty($this->token_data["client_id"])) {
-                                $payload .= $this->token_data["client_id"] ."\n";
-                            }
-                            break;
-                        default:
-                            if (array_key_exists($header, $aRequestHeader)) {
-                                $payload .= $aRequestHeader[$header] . "\n";
-                            }
-                            else {
-                                // according to RFC add NULL Content
-                                $payload .= "\n";
-                            }
-                            break;
+                    foreach ($aTokenHeaders as $header) {
+                        switch($header) {
+                            case "host":
+                                $payload .= $_SERVER[HTTP_HOST] ."\n";
+                                break;
+                            case "client":
+                                if (!empty($this->token_data["client_id"])) {
+                                    $payload .= $this->token_data["client_id"] ."\n";
+                                }
+                                break;
+                            default:
+                                if (array_key_exists($header, $aRequestHeader)) {
+                                    $payload .= $aRequestHeader[$header] . "\n";
+                                }
+                                else {
+                                    // according to RFC add NULL Content
+                                    $payload .= "\n";
+                                }
+                                break;
+                        }
                     }
+                }
+                else {
+                    $payload .= $_SERVER["HTTP_HOST"] ."\n";
+                }
+
+                $testMac = hash_hmac("sha1", $payload, $this->token_data["mac_key"]);
+
+                if ($testMac != $this->token_info["mac"]) {
+
+                    // bad mac
+                    $this->log("mac mismatch " . $testMac . " <> " . $this->token_info["mac"]);
+                    return false;
                 }
             }
             else {
-                $payload .= $_SERVER[HTTP_HOST] ."\n";
-            }
+                if (!isset($this->token_info["access_key"])) {
+                    $this->log("missing client secret");
+                    return false;
+                }
 
-            $testMac = hash_hmac("sha1", $payload, $this->token_data["mac_key"]);
+                // at this point we have to increase the sequence
+                if ($this->token_data["seq_nr"] > 0) {
+                    $this->sequenceStep();
+                }
 
-            if ($testMac != $this->token_info["mac"]) {
-
-                // bad mac
-                $this->log("mac mismatch " . $testMac . " <> " . $this->token_info["mac"]);
-                return false;
+                if ($this->token_info["access_key"] != $this->token_data["access_key"]) {
+                    $this->log("wrong client secret as access key");
+                    return false;
+                }
             }
         }
 
@@ -259,8 +320,7 @@ class OAuth2TokenValidator extends EduIDValidator {
     private function extractToken() {
         $this->token_info = array();
 
-        if ($this->token_type == "MAC" ||
-            $this->token_type == "Request") {
+        if ($this->token_type == "MAC") {
 
             $aTokenItems = explode(',', $this->token);
             foreach ($aTokenItems as $item)
@@ -272,21 +332,39 @@ class OAuth2TokenValidator extends EduIDValidator {
         else if ($this->token_type == "Bearer") {
             $this->token_info["kid"] = $this->token;
         }
+        else if ($this->token_type == "Basic" ) {
+            $this->token_type = null; // we need to find out about the token type
+
+            $authstr = base64_decode($this->token);
+
+            $auth = explode(":", $authstr);
+
+            $this->token_info["kid"]        = array_shift($auth);
+            $this->token_info["access_key"] = array_shift($auth);
+        }
     }
 
     private function findToken() {
         $aDBFields = array(
             "kid", "access_key", "mac_key", "mac_algorithm",
             "seq_nr", "expires", "consumed", "max_seq",
-            "user_uuid", "service_uuid", "client_id"
+            "user_uuid", "service_uuid", "client_id", "token_type", "extra"
         );
 
-        $sqlstr = "select " . implode(", ", $aDBFields). " from tokens where token_type = ? and kid = ? and consumed = 0";
+        $sqlstr = "select " . implode(", ", $aDBFields). " from tokens where kid = ? and consumed = 0";
+
+        $aTypes = array("TEXT");
+        $aValues = array($this->token_info["kid"]);
+
+        if (isset($this->token_type) && !empty($this->token_type)) {
+            $sqlstr .= " AND token_type = ?";
+            $aTypes[] = "TEXT";
+            $aValues[] = $this->token_type;
+        }
 
         // for bearer and session tokens the token_id is the token_key
-        $sth = $this->db->prepare($sqlstr, array("TEXT", "TEXT"));
-        $res = $sth->execute(array($this->token_type,
-                                   $this->token_info["kid"]));
+        $sth = $this->db->prepare($sqlstr, $aTypes);
+        $res = $sth->execute($aValues);
 
         if (PEAR::isError($res)) {
             $this->log($res->getMessage());
@@ -303,7 +381,10 @@ class OAuth2TokenValidator extends EduIDValidator {
                 }
 
                 $this->token_key = $this->token_data["access_key"];
-                $this->token_data["type"] = $this->token_type;
+                $this->token_type = $this->token_data["token_type"];
+            }
+            else {
+                $this->log("no token found for kid " . implode(", ", $aValues));
             }
 
             $sth->free();
@@ -313,7 +394,7 @@ class OAuth2TokenValidator extends EduIDValidator {
     private function consumeToken() {
         $key = $this->token_key;
 
-        $sqlstr = "update table tokens set consumed = ? where kid = ?";
+        $sqlstr = "update  tokens set consumed = ? where kid = ?";
         $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
 
         $now = time();
@@ -329,7 +410,7 @@ class OAuth2TokenValidator extends EduIDValidator {
         $sth->free();
 
         // consume all children
-        $sqlstr = "update table tokens set consumed = ? where parent_kid = ? and token_type <> 'Refresh'";
+        $sqlstr = "update  tokens set consumed = ? where parent_kid = ? and token_type <> 'Refresh'";
         $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
         $res = $sth->execute(array($now,
                                    $key));
@@ -344,8 +425,9 @@ class OAuth2TokenValidator extends EduIDValidator {
     }
 
     private function sequenceStep() {
-        $sqlstr = "update table tokens set seq_nr = ? where kid = ?";
+        $sqlstr = "update  tokens set seq_nr = ? where kid = ?";
         $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
+
         $res = $sth->execute(array($this->token_data["seq_nr"] + 1,
                                    $this->token_key));
 
