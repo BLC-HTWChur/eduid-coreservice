@@ -29,8 +29,8 @@ create table if not exists useridentities
 (
     user_uuid varchar(255) not null,
     idp_uuid varchar(255),    -- null is the core user
-    userID varchar(255),      -- external shiboleth id if available
-    mailAddress varchar(256) not null,
+    userid varchar(255),      -- external shiboleth id if available
+    mailaddress varchar(256) not null,
     extra TEXT,               -- all other profile fields
     invalid INTEGER DEFAULT 0 -- if the IDP revokes the identity
 );
