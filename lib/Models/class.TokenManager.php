@@ -13,15 +13,46 @@ class TokenManager extends DBManager{
     protected $token_type = "Bearer";  // service, client, user
     protected $uuid;        // respective uuid
 
-    protected $mac_algorithm;
-    protected $expires_in;
-    protected $max_seq = 0;
-    protected $use_sequence = false;
+    protected $mac_algorithm  = "hmac-sha-1";
+    protected $expires_in     = 0;
+    protected $max_seq        = 0;
+    protected $use_sequence   = false;
     protected $dbKeys;
+
+    protected $tokenLength;
 
     public function __construct($db, $options=array()) {
         parent::__construct($db);
 
+        $this->setOptions($options);
+
+        $this->dbKeys = array(
+            "kid"           => "TEXT",
+            "token_type"    => "TEXT",
+            "access_key"    => "TEXT",
+            "mac_key"       => "TEXT",
+            "mac_algorithm" => "TEXT",
+            "user_uuid"     => "TEXT",
+            "service_uuid"  => "TEXT",
+            "client_id"     => "TEXT",
+            "parent_kid"    => "TEXT",
+            "scope"         => "TEXT",
+            "extra"         => "TEXT",
+            "seq_nr"        => "INTEGER",
+            "expires"       => "INTEGER",
+            "consumed"      => "INTEGER",
+            "max_seq"       => "INTEGER",
+        );
+
+        // this should be set via the options
+        $this->tokenLength = array(
+            "access_key" => 50,
+            "mac_key"    => 100,
+            "kid"        => 10
+        );
+    }
+
+    public function setOptions($options) {
         if (isset($options) && !empty($options)) {
             if (array_key_exists("expires_in", $options)) {
                 $this->expires_in = $options["expires_in"];
@@ -42,24 +73,6 @@ class TokenManager extends DBManager{
                 $this->token_type = $options["token_type"];
             }
         }
-
-        $this->dbKeys = array(
-            "kid"           => "TEXT",
-            "token_type"    => "TEXT",
-            "access_key"    => "TEXT",
-            "mac_key"       => "TEXT",
-            "mac_algorithm" => "TEXT",
-            "user_uuid"     => "TEXT",
-            "service_uuid"  => "TEXT",
-            "client_id"     => "TEXT",
-            "parent_kid"    => "TEXT",
-            "scope"         => "TEXT",
-            "extra"         => "TEXT",
-            "seq_nr"        => "INT",
-            "expires"       => "INT",
-            "consumed"      => "INT",
-            "max_seq"       => "INT",
-        );
     }
 
     /**
@@ -90,6 +103,17 @@ class TokenManager extends DBManager{
     public function setTokenType($type="Bearer") {
         if (isset($type) && !empty($type)) {
             $this->token_type = $type;
+        }
+    }
+
+    public function useSequence() {
+        $this->use_sequence = true;
+    }
+
+    public function setMaxSeq($maxseq) {
+        $this->use_sequence = true;
+        if (isset($maxseq) && $maxseq > 0) {
+            $this->max_seq = $maxseq;
         }
     }
 
@@ -176,19 +200,19 @@ class TokenManager extends DBManager{
                 $newToken["expires"] = $now + $this->expires_in;
             }
 
-            $newToken["access_key"] = $this->randomString(50);
+            $newToken["access_key"] = $this->randomString($this->tokenLength["access_key"]);
             if ($type == "Bearer") {
                 $newToken["kid"] = $newToken["access_key"];
             }
             else {
-                $newToken["kid"] = $this->randomString(10);
+                $newToken["kid"] = $this->randomString($this->tokenLength["kid"]);
 
                 if (isset($this->mac_algorithm) &&
                     !empty($this->mac_algorithm)) {
                     $newToken["mac_algorithm"] = $this->mac_algorithm;
                 }
 
-                $newToken["mac_key"] = $this->randomString(100);
+                $newToken["mac_key"] = $this->randomString($this->tokenLength["mac_key"]);
             }
 
             foreach(array("user_uuid",
@@ -199,7 +223,8 @@ class TokenManager extends DBManager{
                           "mac_algorithm") as $key) {
 
                 // inherit different approaches from the root token
-                if (array_key_exists($key, $this->root_token) &&
+                if (isset($this->root_token) &&
+                    array_key_exists($key, $this->root_token) &&
                     isset($this->root_token[$key]) &&
                     !empty($this->root_token[$key])) {
                     $newToken[$key] = $this->root_token[$key];
@@ -220,10 +245,10 @@ class TokenManager extends DBManager{
             $aTypes = array();
 
             foreach ( $this->dbKeys as $k => $v) {
-                if (array_key_exists($k, $this->token)) {
-                    $aTypes[] = $c;
+                if (array_key_exists($k, $newToken)) {
+                    $aTypes[] = $v;
                     $aNames[] = $k;
-                    $aValues[] = $this->token[$k];
+                    $aValues[] = $newToken[$k];
                     $aPH[] = '?';
                 }
             }
@@ -233,39 +258,19 @@ class TokenManager extends DBManager{
                 $sth = $this->db->prepare($sqlstr, $aTypes);
                 $res = $sth->execute($aValues);
                 if(PEAR::isError($res)){
-                    $this->log($res->getMessage);
+                    $this->log($res->getMessage() . " '" . $sqlstr . "' " . implode(", ", $aValues));
+                }
+                else {
+                    $this->token = $newToken;
+                    if (isset($this->expires_in) &&
+                        $this->expires_in > 0) {
+                        $this->token["expires_in"] = $this->expires_in;
+                    }
                 }
                 $sth->free();
+
             }
         }
-    }
-
-    public function authenticateUser($useremail, $authToken, $salt="") {
-        $sqlstr = "SELECT u.user_uuid, u.user_passwd from users u, useridentities ui where ui.user_uuid = u.user_uuid and ui.mailAddress = ?";
-
-        $sth = $this->db->prepare($sqlstr, array("TEXT"));
-        $res = $sth->execute(array($useremail));
-
-        if ($row = $res->fetchRow()) {
-            $user_uuid  = $row[0];
-            $pwhash     = $row[1];
-        }
-
-        $sth->free();
-
-        $testToken = sha1($salt      . "\n".  // request token key
-                          $useremail . "\n".  // user email address
-                          $pwhash    . "\n"); // sha1 encrypted password
-
-        if ($autToken == $testToken) {
-
-            $this->id_type = "user";
-            $this->uuid = $user_uuid;
-
-            return true;
-        }
-
-        return false;
     }
 
     public function invalidateToken() {
@@ -435,18 +440,6 @@ class TokenManager extends DBManager{
             }
             $sth->free();
         }
-    }
-
-    protected function randomString($length=10) {
-        $resstring = "";
-        $chars = "abcdefghijklmnopqrstuvwxyz._ABCDEFGHIJKLNOPQRSTUVWXYZ-1234567890";
-        $len = strlen($chars);
-        for ($i = 0; $i < $length; $i++)
-        {
-            $x = rand(0, $len-1);
-            $resstring .= substr($chars, $x, 1);
-        }
-        return $resstring;
     }
 
     private function consume_token_db($key) {
