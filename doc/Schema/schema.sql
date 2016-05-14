@@ -1,3 +1,24 @@
+create table if not exists tokens (
+    kid varchar(255) PRIMARY KEY,
+    token_type varchar(255) NOT NULL,
+    access_key varchar(255),
+    mac_key varchar(255),                           -- shared secret
+    mac_algorithm varchar(10),                      -- only hmac-sha-1 or hmac-sha-256
+    seq_nr INTEGER DEFAULT 1,                       -- 0 if no sequence is used
+
+    expires INTEGER DEFAULT 0,
+    consumed INTEGER DEFAULT 0,
+    max_seq INTEGER DEFAULT 0,
+
+    user_uuid varchar(255),                         -- used for federation users
+    service_uuid varchar(255),                      -- used for federation services
+    client_id varchar(255),                         -- used for apps and external services
+
+    parent_kid varchar(255),
+    scope TEXT,                                     -- optional value
+    extra TEXT
+);
+
 create table if not exists users
 (
     user_uuid varchar(255) primary key,
@@ -10,9 +31,8 @@ create table if not exists useridentities
     idp_uuid varchar(255), -- null is the core user
     userID varchar(255) not null, -- shiboleth id if available
     mailAddress varchar(256) not null,
-    alias INTEGER NOT NULL DEFAULT 0 -- set to > 0 if the user has an alias
+    invalid INTEGER DEFAULT 0 -- if the IDP revokes the identity
 );
-
 
 create table if not exists profiletokens (
     user_uuid varchar(255) not null,  -- user id
@@ -38,34 +58,6 @@ create table if not exists identityproviders
     token TEXT,                                    -- our token to access the IDP
     info TEXT,
     rsd TEXT
-);
-
-create table if not exists sessions
-(
-    token varchar(256) primary key,
-    user_uuid varchar(64),
-    lastaccess INTEGER
-);
-
-create table if not exists tokens (
-    kid varchar(255) PRIMARY KEY,
-    token_type varchar(255) NOT NULL,
-    access_key varchar(255),
-    mac_key varchar(255),                           -- shared secret
-    mac_algorithm varchar(10),                      -- only hmac-sha-1 or hmac-sha-256
-    seq_nr INTEGER DEFAULT 1,                       -- 0 if no sequence is used
-
-    expires INTEGER DEFAULT 0,
-    consumed INTEGER DEFAULT 0,
-    max_seq INTEGER DEFAULT 0,
-
-    user_uuid varchar(255),                         -- used for federation users
-    service_uuid varchar(255),                      -- used for federation services
-    client_id varchar(255),                         -- used for apps and external services
-
-    parent_kid varchar(255),
-    scope TEXT,                                     -- optional value
-    extra TEXT
 );
 
 create table if not exists services (
