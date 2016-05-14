@@ -51,20 +51,20 @@ class OAuth2TokenValidator extends EduIDValidator {
         require_once("Models/class.TokenManager.php");
 
         $tm = new TokenManager($this->db, array("type"=> $type));
-        $tm->setRootToken($this->token);
+        $tm->setRootToken($this->token_data);
 
         return $tm;
     }
 
     public function getTokenUser() {
-        if (isset($this->token) &&
-            !empty($this->token) &&
-            !empty($this->token["user_uuid"])) {
+        if (isset($this->token_data) &&
+            !empty($this->token_data) &&
+            !empty($this->token_data["user_uuid"])) {
 
             require_once("Models/class.UserManager.php");
 
             $um = new UserManager($this->db);
-            if ($um->findByUUID($this->token["user_uuid"])) {
+            if ($um->findByUUID($this->token_data["user_uuid"])) {
                 return $um;
             }
         }
