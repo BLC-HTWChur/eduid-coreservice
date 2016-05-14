@@ -25,7 +25,6 @@ if(array_key_exists("PATH_INFO", $_SERVER)) {
     array_shift($pi);
     $serviceName = array_shift($pi);
     error_log("got service: " . $serviceName);
-
 }
 
 if (isset($serviceName) && !empty($serviceName)) {
@@ -44,6 +43,9 @@ if (isset($serviceName) && !empty($serviceName)) {
             break;
         case "user-profile":
             $service = new UserProfileService();
+            break;
+        case "client-register":
+            $service = new ClientRegisterService();
             break;
 //        case "protocol-discovery":
 //            $service = new ProtocolDiscoveryService();
