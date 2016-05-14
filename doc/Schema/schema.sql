@@ -28,9 +28,10 @@ create table if not exists users
 create table if not exists useridentities
 (
     user_uuid varchar(255) not null,
-    idp_uuid varchar(255), -- null is the core user
-    userID varchar(255) not null, -- shiboleth id if available
+    idp_uuid varchar(255),    -- null is the core user
+    userID varchar(255),      -- external shiboleth id if available
     mailAddress varchar(256) not null,
+    extra TEXT,               -- all other profile fields
     invalid INTEGER DEFAULT 0 -- if the IDP revokes the identity
 );
 
@@ -38,14 +39,6 @@ create table if not exists profiletokens (
     user_uuid varchar(255) not null,  -- user id
     token varchar(255) not null,      -- external token
     info TEXT                         -- use this to restric access to profile information
-);
-
-create table if not exists userprofiles
-(
-    user_uuid varchar(255) not null,
-    userID varchar(255) not null,
-    profile TEXT,
-    isInvalid INTEGER
 );
 
 create table if not exists identityproviders
