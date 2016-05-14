@@ -9,6 +9,7 @@ create table if not exists tokens (
     expires INTEGER DEFAULT 0,
     consumed INTEGER DEFAULT 0,
     max_seq INTEGER DEFAULT 0,
+    last_access INTEGER DEFAULT 0,
 
     user_uuid varchar(255),                         -- used for federation users
     service_uuid varchar(255),                      -- used for federation services

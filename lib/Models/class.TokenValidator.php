@@ -194,7 +194,10 @@ class OAuth2TokenValidator extends EduIDValidator {
             return false;
         }
 
-        if (in_array($this->token_type, $this->accept_type))
+        if (!in_array($this->token_type, $this->accept_type)) {
+            $this->log("not accepted token type");
+            return false;
+        }
 
         if ($this->token_data["expires"] > 0 &&
             $this->token_data["expires"] < time()) {
@@ -229,6 +232,18 @@ class OAuth2TokenValidator extends EduIDValidator {
 
                     return false;
                 }
+
+                // verify implicit sequence, don't allow resuing the time
+                if (isset($this->token_data["last_access"]) &&
+                    $this->token_data["last_access"] > 0 &&
+                    $this->token_info["ts"] <= $this->token_data["last_access"]) {
+
+                    $this->log("new request is older that previous one");
+                    $this->service->forbidden();
+                    return false;
+                }
+
+                $this->updateLastAccess();
 
                 if ($this->token_data["seq_nr"] > 0 &&
                     (!isset($this->token_info["seq_nr"]) ||
@@ -381,7 +396,8 @@ class OAuth2TokenValidator extends EduIDValidator {
         $aDBFields = array(
             "kid", "access_key", "mac_key", "mac_algorithm",
             "seq_nr", "expires", "consumed", "max_seq",
-            "user_uuid", "service_uuid", "client_id", "token_type", "extra"
+            "user_uuid", "service_uuid", "client_id", "token_type", "extra",
+            "last_access"
         );
 
         $sqlstr = "select " . implode(", ", $aDBFields). " from tokens where kid = ? and consumed = 0";
@@ -463,6 +479,21 @@ class OAuth2TokenValidator extends EduIDValidator {
 
         $res = $sth->execute(array($this->token_data["seq_nr"] + 1,
                                    $this->token_key));
+
+        if (PEAR::isError($res))
+        {
+            $this->error = $res->getMessage();
+            $this->log($res->getMessage());
+        }
+        $sth->free();
+    }
+
+    private function updateLastAccess() {
+        $sqlstr = "update  tokens set last_access = ? where kid = ?";
+        $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
+
+        $res = $sth->execute(array($this->token_info["ts"],
+                                   $this->token_data["kid"]));
 
         if (PEAR::isError($res))
         {
