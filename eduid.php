@@ -20,11 +20,9 @@ require_once('Service/class.Error.php');
 
 if(array_key_exists("PATH_INFO", $_SERVER)) {
 
-    error_log("found path_info " . $_SERVER["PATH_INFO"]);
     $pi = explode("/", $_SERVER["PATH_INFO"]);
     array_shift($pi);
     $serviceName = array_shift($pi);
-    error_log("got service: " . $serviceName);
 }
 
 if (isset($serviceName) && !empty($serviceName)) {
