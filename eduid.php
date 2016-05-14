@@ -31,15 +31,11 @@ if (isset($serviceName) && !empty($serviceName)) {
 
     $serviceName = trim($serviceName);
 
-    if ($serviceName == "oauth") {
-        $serviceName .= "2";
-    }
-
     require_once('Service/class.' . $serviceName . '.php');
 
     switch($serviceName) {
-        case "oauth2":
-            $service = new OAuth2Service();
+        case "user-auth":
+            $service = new UserAuthService();
             break;
         case "user-profile":
             $service = new UserProfileService();
