@@ -10,3 +10,5 @@ service-authorization.php
 
 user-profile.php
 /config/eduid.ini
+
+testdata/*
