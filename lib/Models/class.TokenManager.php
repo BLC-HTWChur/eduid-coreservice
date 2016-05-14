@@ -38,6 +38,7 @@ class TokenManager extends DBManager{
             "parent_kid"    => "TEXT",
             "scope"         => "TEXT",
             "extra"         => "TEXT",
+            "scope"         => "TEXT",
             "seq_nr"        => "INTEGER",
             "expires"       => "INTEGER",
             "consumed"      => "INTEGER",
