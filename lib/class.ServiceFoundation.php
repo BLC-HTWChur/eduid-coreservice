@@ -8,7 +8,9 @@ require_once('MDB2.php');
 //require_once("Models/class.SessionValidator.php");
 require_once("Models/class.TokenValidator.php");
 
-
+/**
+ *
+ */
 class ServiceFoundation extends RESTling {
 
     protected $db;
