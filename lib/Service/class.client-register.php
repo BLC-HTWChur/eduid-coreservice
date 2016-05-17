@@ -70,7 +70,7 @@ class ClientRegisterService extends ServiceFoundation {
             !empty($token["access_key"])) {
             $this->data = array(
                 "client_id" => $token["kid"],
-                "mac_key" => $token["mac_key"],    // used for password encryption and is never shared after registration
+                "code" => $token["mac_key"],    // used for password encryption and is never shared after registration
                 "client_secret" => $token["access_key"]
             );
         }
