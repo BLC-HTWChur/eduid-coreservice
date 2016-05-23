@@ -37,7 +37,8 @@ class ClientRegisterService extends ServiceFoundation {
         $extra = array("OS"         => $gExtra["OS"],
                        "AppVersion" => $gExtra["AppVersion"]);
 
-        if (array_key_exists("client_name", $this->inputData)) {
+        if (isset($this->inputData) &&
+            array_key_exists("client_name", $this->inputData)) {
 
             $extras["client_name"] = $this->inputData["client_name"];
         }
@@ -58,7 +59,7 @@ class ClientRegisterService extends ServiceFoundation {
             // web clients need to get a new client token whenever
             // they want to authenticate a new user.
             $tMgnt->setMaxSeq(1);
-            $tMgnt->addToken(array("client_id" => $_SERVER["REMOTE_IP"],
+            $tMgnt->addToken(array("client_id" => $_SERVER["REMOTE_ADDR"],
                                    "extra"     => json_encode($extra)));
         }
 
