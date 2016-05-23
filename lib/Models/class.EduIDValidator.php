@@ -31,7 +31,7 @@ class EduIDValidator extends RESTlingValidator {
     public function requireEmpty($methodList) {
         if (isset($methodList)) {
             if (!is_array($methodList)) {
-                $methodLis = array($methodList);
+                $methodList = array($methodList);
             }
             foreach ($methodList as $m) {
                 $m = strtolower($m);
