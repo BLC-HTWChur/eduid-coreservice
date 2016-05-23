@@ -85,7 +85,7 @@ class TokenManager extends DBManager{
         if (isset($token) && !empty($token)) {
 
             $this->root_token = $token;
-            $this->root_token_type = $token["type"];
+            $this->root_token_type = $token["token_type"];
             if (!isset($this->token_type) ||
                 empty($this->token_type)) {
 
