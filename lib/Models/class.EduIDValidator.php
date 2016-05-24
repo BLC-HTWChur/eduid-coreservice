@@ -3,7 +3,7 @@
  *
  * *********************************************************************** */
 
-class EduIDValidator extends RESTlingValidator {
+class EduIDValidator extends \RESTling\Validator {
     protected $db;
     protected $valid = false;
 

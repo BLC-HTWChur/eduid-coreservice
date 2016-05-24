@@ -3,4 +3,9 @@
  *
  * *********************************************************************** */
 
+/**
+ *
+ */
+class ProtocolDiscoveryService extends ServiceFoundation {
+}
 ?>

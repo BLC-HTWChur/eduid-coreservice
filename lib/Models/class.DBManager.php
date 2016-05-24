@@ -3,7 +3,7 @@
  *
  * *********************************************************************** */
 
-class DBManager extends Logger {
+class DBManager extends \RESTling\Logger {
     protected $db;
 
     public function __construct($db){

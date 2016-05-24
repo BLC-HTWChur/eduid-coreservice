@@ -16,7 +16,7 @@ include_once('RESTling/contrib/Restling.auto.php');
 require_once('class.ServiceFoundation.php');
 
 // preload the error service
-require_once('Service/class.Error.php');
+require_once('Service/class.ErrorService.php');
 
 if(array_key_exists("PATH_INFO", $_SERVER)) {
 
@@ -28,38 +28,22 @@ if(array_key_exists("PATH_INFO", $_SERVER)) {
 if (isset($serviceName) && !empty($serviceName)) {
 
     $serviceName = trim($serviceName);
+    $ts = explode("-", $serviceName);
+    $serviceName = "";
 
-    require_once('Service/class.' . $serviceName . '.php');
+    foreach ($ts as $v) {
+        $serviceName .= ucfirst($v);
+    }
 
-    switch($serviceName) {
-        case "user-auth":
-            $service = new UserAuthService();
-            break;
-        case "user-profile":
-            $service = new UserProfileService();
-            break;
-        case "client-register":
-            $service = new ClientRegisterService();
-            break;
-//        case "protocol-discovery":
-//            $service = new ProtocolDiscoveryService();
-//            break;
-//        case "user-service":
-//            $service = new UserServiceDiscoveryService();
-//            break;
-//        case "service-authorization":
-//            $service = new ServiceAuthorizationService();
-//            break;
-//        case "federation-manager":
-//            $service = new FederationManagerService();
-//            break;
+    $serviceName .= "Service";
 
-        case "authtest":
-            $service = new AuthTestService();
-            break;
-        default:
-            $service = new ErrorService();
-            break;
+    try {
+        require_once('Service/class.' . $serviceName . '.php');
+
+        $service = new $servicename();
+    }
+    catch (\Exception $e) {
+        $service = new ErrorService();
     }
 }
 

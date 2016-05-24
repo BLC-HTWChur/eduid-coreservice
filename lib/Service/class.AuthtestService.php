@@ -4,7 +4,7 @@
  * *********************************************************************** */
 
 
-class AuthTestService extends ServiceFoundation {
+class AuthtestService extends ServiceFoundation {
 
     protected function get() {
         $token = $this->tokenValidator->getToken();

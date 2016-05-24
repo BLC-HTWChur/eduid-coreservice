@@ -11,7 +11,7 @@ require_once("Models/class.TokenValidator.php");
 /**
  *
  */
-class ServiceFoundation extends RESTling {
+class ServiceFoundation extends \RESTling\Service {
 
     protected $db;
     protected $configuration;

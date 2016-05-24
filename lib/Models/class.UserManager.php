@@ -5,7 +5,7 @@
 
 require_once("Models/class.DBManager.php");
 
-class UserManager extends DBManager{
+class UserManager extends DBManager {
     private $user;
     private $profile;
 
