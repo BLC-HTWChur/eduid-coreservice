@@ -39,7 +39,7 @@ class ServiceFoundation extends \RESTling\Service {
         }
         catch (Exception $e) {
             $this->fatal($e->getMessage());
-            $this->status = RESTling::UNINITIALIZED;
+            $this->status = \RESTling\Service::UNINITIALIZED;
             return;
         }
 
@@ -58,7 +58,7 @@ class ServiceFoundation extends \RESTling\Service {
     }
 
     private function initDatabase() {
-        if ($this->status == RESTling::OK) {
+        if ($this->status == \RESTling\Service::OK) {
             $dbCfg = $this->getConfiguration('database');
 
             $server = "localhost";
@@ -85,13 +85,13 @@ class ServiceFoundation extends \RESTling\Service {
 
             if (PEAR::isError($this->db)) {
                 $this->fatal("cannot connect to database");
-                $this->status = RESTling::UNINITIALIZED;
+                $this->status = \RESTling\Service::UNINITIALIZED;
             }
         }
     }
 
     private function initSessionValidator() {
-        if ($this->status == RESTling::OK) {
+        if ($this->status == \RESTling\Service::OK) {
 //            $sessionValidator = new SessionValidator($his->db);
             $this->tokenValidator   = new OAuth2TokenValidator($this->db);
 

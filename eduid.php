@@ -40,7 +40,7 @@ if (isset($serviceName) && !empty($serviceName)) {
     try {
         require_once('Service/class.' . $serviceName . '.php');
 
-        $service = new $servicename();
+        $service = new $serviceName();
     }
     catch (\Exception $e) {
         $service = new ErrorService();
