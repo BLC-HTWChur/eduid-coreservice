@@ -150,6 +150,7 @@ class OAuth2TokenValidator extends EduIDValidator {
 
             // nothin to validate
             $this->log("no token type available");
+            $this->log(json_encode(getallheaders()));
             return false;
         }
 
@@ -181,6 +182,7 @@ class OAuth2TokenValidator extends EduIDValidator {
             return false;
         }
 
+        // verify that the token is in our token store
         $this->findToken();
 
         if (!isset($this->token_key)) {
@@ -195,7 +197,7 @@ class OAuth2TokenValidator extends EduIDValidator {
         }
 
         if (!in_array($this->token_type, $this->accept_type)) {
-            $this->log("not accepted token type");
+            $this->log("not accepted token type. Given type '" . $this->token_type . "'");
             return false;
         }
 
@@ -321,12 +323,17 @@ class OAuth2TokenValidator extends EduIDValidator {
                     $payload .= $_SERVER["HTTP_HOST"] ."\n";
                 }
 
-                $testMac = hash_hmac("sha1", $payload, $this->token_data["mac_key"]);
+                $testMac = hash_hmac("sha1",
+                                     $payload,
+                                     $this->token_data["mac_key"]);
 
                 if ($testMac != $this->token_info["mac"]) {
 
                     // bad mac
-                    $this->log("mac mismatch " . $testMac . " <> " . $this->token_info["mac"]);
+                    $this->log("mac mismatch ");
+                    $this->log("client token ". $this->token_info["mac"]);
+                    $this->log("verify token ". $testMac);
+
                     return false;
                 }
             }

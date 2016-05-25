@@ -17,7 +17,7 @@ class AuthorizationService extends ServiceFoundation {
         parent::__construct();
 
         $this->tokenValidator->resetAcceptedTokens("Basic");
-        $this->tokenValidator->setAcceptedTokenTypes("Client");
+        //$this->tokenValidator->setAcceptedTokenTypes("Client");
 
         $this->userValidator = new UserAuthDataValidator($this->db);
         $this->userValidator->requireEmpty("get");

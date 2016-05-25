@@ -37,7 +37,9 @@ class UserAuthDataValidator extends EduIDValidator {
             $tChallenge = sha1($gT["access_key"] . $gT["mac_key"]);
             if ($tChallenge != $this->data["challenge"]) {
 
-                $this->log("bad client challenge ");
+                $this->log("bad client challenge");
+                $this->log("got challenge " . $this->data['challenge']);
+                $this->log("own challenge " . $tChallenge);
                 $this->service->forbidden();
                 return false;
             }
@@ -46,7 +48,7 @@ class UserAuthDataValidator extends EduIDValidator {
             $this->user = new UserManager($this->db);
 
             if (!$this->user->findByMailAddress($this->data["username"])) {
-                $this->log("no user found");
+                $this->log("user not found");
                 $this->service->forbidden();
                 return false;
             }
