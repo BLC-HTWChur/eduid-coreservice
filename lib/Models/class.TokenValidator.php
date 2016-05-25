@@ -39,7 +39,9 @@ class OAuth2TokenValidator extends EduIDValidator {
             isset($headers["Authorization"]) &&
             !empty($headers["Authorization"]))
         {
+
             $authheader = $headers["Authorization"];
+
             $aHeadElems = explode(' ', $authheader);
 
             $this->token_type = $aHeadElems[0];
@@ -392,10 +394,15 @@ class OAuth2TokenValidator extends EduIDValidator {
 
             $authstr = base64_decode($this->token);
 
+            //$this->log('authstr ' . $authstr);
+
             $auth = explode(":", $authstr);
 
             $this->token_info["kid"]        = array_shift($auth);
             $this->token_info["access_key"] = array_shift($auth);
+
+            //$this->log('kid: ' . $this->token_info["kid"] );
+            //$this->log('access_key: ' . $this->token_info["access_key"] );
         }
     }
 
