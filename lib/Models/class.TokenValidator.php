@@ -41,6 +41,7 @@ class OAuth2TokenValidator extends EduIDValidator {
         {
 
             $authheader = $headers["Authorization"];
+            // $this->log("authorization header ". $authheader);
 
             $aHeadElems = explode(' ', $authheader);
 
