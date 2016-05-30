@@ -76,7 +76,7 @@ class ServiceFoundation extends \RESTling\Service {
                          "password" => $dbCfg["pass"],
                          "hostspec" => $server,
                          "database" => $dbname);
-
+            
             $options = array(
 //                "persistent" => true
             );
@@ -93,7 +93,8 @@ class ServiceFoundation extends \RESTling\Service {
     private function initSessionValidator() {
         if ($this->status == \RESTling\Service::OK) {
 //            $sessionValidator = new SessionValidator($his->db);
-            $this->tokenValidator   = new OAuth2TokenValidator($this->db);
+
+            $this->tokenValidator   = new TokenValidator($this->db);
 
             $this->addHeaderValidator($this->tokenValidator);
         }
