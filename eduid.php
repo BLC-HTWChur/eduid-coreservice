@@ -11,6 +11,7 @@ set_include_path("./lib" . PATH_SEPARATOR .
 
 // load RESTling
 include_once('RESTling/contrib/Restling.auto.php');
+include_once('eduid.autoloader.php');
 
 // preload the service foundation, so the services don't have to.
 require_once('class.ServiceFoundation.php');
