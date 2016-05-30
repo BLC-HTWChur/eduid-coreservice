@@ -9,9 +9,12 @@
  * in a later version.
  * *********************************************************************** */
 
-class ErrorService {
-    public function __construct() {
-        error_log("ErrorService::__construct - FATAL ERROR: Error Service launched");
+class ErrorService extends \RESTling\Logger {
+    public function __construct($msg) {
+        $this->mark("Start Error Service");
+        $this->log("ErrorService::__construct - FATAL ERROR: Error Service launched");
+
+        $this->log('internal message: ' . $msg);
     }
 
     public function run() {
@@ -22,6 +25,7 @@ class ErrorService {
         else {
             header('HTTP/1.1 403 Forbidden');
         }
+        $this->mark("END Error Service");
     }
 }
 

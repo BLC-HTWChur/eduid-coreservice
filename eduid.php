@@ -43,12 +43,12 @@ if (isset($serviceName) && !empty($serviceName)) {
         $service = new $serviceName();
     }
     catch (\Exception $e) {
-        $service = new ErrorService();
+        $service = new ErrorService($e->getMessage());
     }
 }
 
 if (!isset($service)) {
-    $service = new ErrorService();
+    $service = new ErrorService("no service set");
 }
 
 $service->run();

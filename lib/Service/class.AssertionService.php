@@ -16,7 +16,10 @@ class AssertionService extends ServiceFoundation {
         $this->tokenValidator->resetAcceptedTokens(array("Bearer", "MAC"));
     }
 
-
+    protected function get() {
+        $this->data = array("status"=> "OK",
+                            "message"=>"POST user information");
+    }
 }
 
 ?>
