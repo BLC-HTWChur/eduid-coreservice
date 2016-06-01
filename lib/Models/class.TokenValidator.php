@@ -16,7 +16,7 @@ class TokenValidator extends EduIDValidator {
 
     private $token_info;  // provided by the client
     private $token_data;  // provided by the DB
-    private $jwt_token; 
+    private $jwt_token;
 
     private $requireUUID = array();
 
@@ -38,7 +38,7 @@ class TokenValidator extends EduIDValidator {
 
         // check for the authorization header
         $headers = getallheaders();
-        
+
         if (array_key_exists("Authorization", $headers) &&
             isset($headers["Authorization"]) &&
             !empty($headers["Authorization"]))
@@ -149,6 +149,34 @@ class TokenValidator extends EduIDValidator {
         return $this->token_data;
     }
 
+    public function getJWT() {
+        return $this->jwt_token;
+    }
+
+    public function verifyRawToken((string) $rawtoken) {
+        if (isset($rawtoken) &&
+            !empty($rawtoken) &&
+            $rawtoken == $this->token) {
+
+            return true;
+        }
+        return false;
+    }
+
+    public function verifyJWTClaim((string) $claim, (string) $value) {
+        if (isset($value) &&
+            !empty($value) &&
+            isset($claim) &&
+            !empty($claim) &&
+            isset($this->jwt_token) &&
+            $this->jwt_token->getClaim($claim) == $value) {
+
+            return true;
+        }
+
+        return false;
+    }
+
     protected function validate() {
         $this->valid = false;
 
@@ -220,12 +248,12 @@ class TokenValidator extends EduIDValidator {
         if ($this->token_type == "Bearer") {
             // run JWT validation
             $alg = $this->jwt_token->getHeader("alg");
-        
+
             if (!isset($alg) || empty($alg)) {
                 $this->log("reject unprotected jwt");
                 return false;
             }
-            
+
             // enforce algorithm
             if ($this->token_data["mac_algorithm"] != $alg) {
                 $this->log("invalid jwt sign method presented");
@@ -233,7 +261,7 @@ class TokenValidator extends EduIDValidator {
                 $this->log("received: '" . $alg."'");
                 return false;
             }
-            
+
             switch ($alg) {
                 case "HS256":
                     $signer = new Signer\Hmac\Sha256();
@@ -265,24 +293,24 @@ class TokenValidator extends EduIDValidator {
                 default:
                     break;
             }
-            
+
             if (!isset($signer)) {
                 $this->log("no jwt signer found for " . $alg);
                 return false;
             }
-            
+
             if($this->jwt_token->verify($signer, $this->token_data["mac_key"])) {
                 $this->log("jwt signature does not match key");
                 return false;
             }
-            
+
             if ($this->jwt_token->getClaim("iss") != $this->token_data["client_id"]) {
                 $this->log("jwt issuer does not match");
                 $this->log("expected: " . $this->token_data["client_id"]);
                 $this->log("expected: " . $this->jwt_token->getClaim("iss"));
                 return false;
             }
-            
+
             // ignore sub, aud, and name for the time being.
         }
         else if ($this->token_type == "MAC") {
@@ -457,11 +485,11 @@ class TokenValidator extends EduIDValidator {
         else if ($this->token_type == "Bearer") {
             $jwt = new JWT\Parser();
             $token = $jwt->parse($this->token);
-            
-            $this->token_info["kid"]  = $token->getHeader("kid");    
-            
+
+            $this->token_info["kid"]  = $token->getHeader("kid");
+
             $this->jwt_token = $token;
-            
+
             // $this->token_info["kid"] = $this->token;
         }
         else if ($this->token_type == "Basic" ) {
