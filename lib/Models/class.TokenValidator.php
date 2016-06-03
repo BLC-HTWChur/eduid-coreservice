@@ -273,36 +273,25 @@ class TokenValidator extends EduIDValidator {
                 return false;
             }
 
-            switch ($alg) {
-                case "HS256":
-                    $signer = new Signer\Hmac\Sha256();
+            list($algo, $level) = explode("S", $alg);
+
+            switch ($algo) {
+                case "H": $algo = "Hmac"; break;
+                case "R": $algo = "Rsa"; break;
+                case "E": $algo = "Ecdsa"; break;
+                default: $algo = ""; break;
+            }
+            switch ($level) {
+                case "256":
+                case "384":
+                case "512":
                     break;
-                case "HS384":
-                    $signer = new Signer\Hmac\Sha384();
-                    break;
-                case "HS512":
-                    $signer = new Signer\Hmac\Sha512();
-                    break;
-                case "RS256":
-                    $signer = new Signer\Rsa\Sha256();
-                    break;
-                case "RS384":
-                    $signer = new Signer\Rsa\Sha384();
-                    break;
-                case "RS512":
-                    $signer = new Signer\Rsa\Sha512();
-                    break;
-                case "ES256":
-                    $signer = new Signer\Ecdsa\Sha256();
-                    break;
-                case "ES384":
-                    $signer = new Signer\Ecdsa\Sha384();
-                    break;
-                case "ES512":
-                    $signer = new Signer\Ecdsa\Sha512();
-                    break;
-                default:
-                    break;
+                default: $level = ""; break;
+            }
+
+            if (!empty($algo) && !empty($level)) {
+                $signerClass = "Signer\\" . $algo . "\\Sha" . $level;
+                $signer = new $signerClass();
             }
 
             if (!isset($signer)) {
