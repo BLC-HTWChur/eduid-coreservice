@@ -5,10 +5,10 @@
 
 require_once("Models/class.EduIDValidator.php");
 require_once("Models/class.UserManager.php");
+require_once("Models/class.ServiceManager.php");
 require_once("Models/class.TokenDataValidator.php");
 
 use Lcobucci\JWT as JWT;
-use Lcobucci\JWT\Signer as Signer;
 
 /**
  *
@@ -115,18 +115,17 @@ class TokenService extends ServiceFoundation {
 
         $tm = $this->tokenValidator->getTokenIssuer($tokenType);
 
-        $signer = new Signer\Hmac\Sha256();
-
         $user->loadProfileIdentities();
         $profiles = $user->getAllProfiles();
         $profile = $profiles[0]["extra"];
         $profile["email"] = $profiles[0]["mailaddress"];
 
-        $tm = $this->tokenvalidator->getTokenIssuer('assertion');
+        $tm = $this->tokenvalidator->getTokenIssuer($tokenType);
 
         $tm->addToken();
 
         $token = $tm->getToken();
+        $service = new ServiceManager($this->db);
 
         $jwt = new JWT\Builder();
 
@@ -145,7 +144,8 @@ class TokenService extends ServiceFoundation {
             $jwt->set($k, $profile["extra"][$k]);
         }
 
-        $jwt->sign($signer, $service->tokenKey("mac_key"));
+        $jwt->sign($service->getTokenSigner(),
+                   $service->getSignToken());
 
         $this->data = array(
             "access_token" => (string) $jwt->getToken(),
