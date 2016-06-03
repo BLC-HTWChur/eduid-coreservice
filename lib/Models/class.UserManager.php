@@ -47,10 +47,11 @@ class UserManager extends DBManager {
             foreach ($aMap as $k) {
                 $this->user[$k] = $row[$k];
             }
-
+            $sth->free();
             return true;
         }
 
+        $sth->free();
         return false;
     }
 
