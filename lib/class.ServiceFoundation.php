@@ -76,7 +76,7 @@ class ServiceFoundation extends \RESTling\Service {
                          "password" => $dbCfg["pass"],
                          "hostspec" => $server,
                          "database" => $dbname);
-            
+
             $options = array(
 //                "persistent" => true
             );
@@ -97,6 +97,9 @@ class ServiceFoundation extends \RESTling\Service {
             $this->tokenValidator   = new TokenValidator($this->db);
 
             $this->addHeaderValidator($this->tokenValidator);
+
+            // by default we accept only MAC tokens
+            $this->tokenValidator->resetAcceptedTokens(array("MAC"));
         }
     }
 }
