@@ -86,7 +86,7 @@ class TokenDataValidator extends EduIDValidator {
                     return false;
                 }
 
-                if ($token["extras"]["eduid_appid"] != $this->inputData["client_id"]) {
+                if ($token["extras"]["client_type"] != $this->inputData["client_id"]) {
                     $this->log("mismatching eduid app id presented");
                     return false;
                 }
