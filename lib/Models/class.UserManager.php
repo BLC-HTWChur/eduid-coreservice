@@ -12,7 +12,7 @@ class UserManager extends DBManager {
     public function findByMailAddress($mailAddress) {
         $this->user = null;
 
-        $sqlstr = "SELECT u.user_uuid, u.user_passwd, ui.mailAddress from users u, useridentities ui where ui.user_uuid = u.user_uuid and ui.mailAddress = ?";
+        $sqlstr = "SELECT u.user_uuid, u.user_passwd, u.salt, ui.mailAddress from users u, useridentities ui where ui.user_uuid = u.user_uuid and ui.mailAddress = ?";
         $sth = $this->db->prepare($sqlstr, array("TEXT"));
         $res = $sth->execute(array($mailAddress));
 
@@ -54,7 +54,7 @@ class UserManager extends DBManager {
         return false;
     }
 
-    public function authenticate( $authToken, $key ) {
+    public function authenticate( $authToken ) {
         if (isset($this->user) && !empty($this->user)) {
 
             $testToken = sha1($key      . "\n".  // request token key

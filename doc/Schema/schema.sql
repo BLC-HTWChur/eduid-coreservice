@@ -23,7 +23,8 @@ create table if not exists tokens (
 create table if not exists users
 (
     user_uuid varchar(255) primary key,
-    user_passwd varchar(255) not null
+    user_passwd varchar(255) not null,
+    salt varchar(50) not null
 );
 
 create table if not exists useridentities
@@ -58,9 +59,10 @@ create table if not exists services (
     service_uuid varchar(255) primary key,
     name varchar(255) not null,
     mainurl varchar(2048) not null,
+    token_endpoint varchar(2048),
     rsdurl varchar(2048) not null,
     info TEXT,
-    token TEXT                                     -- our token for the service
+    token TEXT                                     -- private service token
 );
 
 create table if not exists serviceprotocols (
