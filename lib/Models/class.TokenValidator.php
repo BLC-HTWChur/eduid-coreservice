@@ -63,6 +63,15 @@ class TokenValidator extends EduIDValidator {
         return $tm;
     }
 
+    public function getTokenManager($type) {
+        require_once("Models/class.TokenManager.php");
+
+        $tm = new TokenManager($this->db);
+        $tm->setToken($this->token_data);
+
+        return $tm;
+    }
+
     public function getTokenUser() {
         if (isset($this->token_data) &&
             !empty($this->token_data) &&
@@ -246,6 +255,8 @@ class TokenValidator extends EduIDValidator {
         }
 
         if ($this->token_type == "Bearer") {
+            // FIXME: TEST IF THE RAW TOKEN IS A KID in the DB
+
             // run JWT validation
             $alg = $this->jwt_token->getHeader("alg");
 

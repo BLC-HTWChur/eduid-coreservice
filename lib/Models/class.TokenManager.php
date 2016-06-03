@@ -77,47 +77,10 @@ class TokenManager extends DBManager{
     }
 
     /**
-     * @function setRootToken()
+     * @public @function setToken()
      *
-     * used by the OAuth Service to pass data from the TokenValidator
+     * initialises using a token (provided by the token validator)
      */
-    public function setRootToken($token) {
-        if (isset($token) && !empty($token)) {
-
-            $this->root_token = $token;
-            $this->root_token_type = $token["token_type"];
-            if (!isset($this->token_type) ||
-                empty($this->token_type)) {
-
-                $this->token_type = $this->root_token_type;
-            }
-         }
-    }
-
-    public function getToken() {
-        return $this->token;
-    }
-
-    /**
-     * change the type for new tokens
-     */
-    public function setTokenType($type="Bearer") {
-        if (isset($type) && !empty($type)) {
-            $this->token_type = $type;
-        }
-    }
-
-    public function useSequence() {
-        $this->use_sequence = true;
-    }
-
-    public function setMaxSeq($maxseq) {
-        $this->use_sequence = true;
-        if (isset($maxseq) && $maxseq > 0) {
-            $this->max_seq = $maxseq;
-        }
-    }
-
     public function setToken($token) {
         $aValid = array("type");
         foreach ($this->dbKeys as $k => $v) {
@@ -139,6 +102,52 @@ class TokenManager extends DBManager{
 
             $this->token = $token;
             $this->findRootToken();
+        }
+    }
+
+    /**
+     * @function setRootToken()
+     *
+     * used by the OAuth Service to pass data from the TokenValidator
+     */
+    public function setRootToken($token) {
+        if (isset($token) && !empty($token)) {
+
+            $this->root_token = $token;
+            $this->root_token_type = $token["token_type"];
+            if (!isset($this->token_type) ||
+                empty($this->token_type)) {
+
+                $this->token_type = $this->root_token_type;
+            }
+         }
+    }
+
+    public function getToken() {
+        return $this->token;
+    }
+
+    public function getRootToken() {
+        return $this->root_token;
+    }
+
+    /**
+     * change the type for new tokens
+     */
+    public function setTokenType($type="Bearer") {
+        if (isset($type) && !empty($type)) {
+            $this->token_type = $type;
+        }
+    }
+
+    public function useSequence() {
+        $this->use_sequence = true;
+    }
+
+    public function setMaxSeq($maxseq) {
+        $this->use_sequence = true;
+        if (isset($maxseq) && $maxseq > 0) {
+            $this->max_seq = $maxseq;
         }
     }
 
