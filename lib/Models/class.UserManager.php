@@ -54,14 +54,12 @@ class UserManager extends DBManager {
         return false;
     }
 
-    public function authenticate( $authToken ) {
+    public function authenticate( $password ) {
         if (isset($this->user) && !empty($this->user)) {
 
-            $testToken = sha1($key      . "\n".  // request token key
-                              $this->user["mailaddress"] . "\n".  // user email address
-                              $this->user["user_passwd"] . "\n"); // sha1 encrypted password
+            $pwd = sha1($this->user["salt"] . $password);
 
-            if ($authToken == $testToken) {
+            if ($pwd == $this->user["user_passwd"] ) {
                 return true;
             }
         }
