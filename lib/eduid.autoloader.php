@@ -15,7 +15,9 @@
             !empty($NSRoot) &&
             $NSRoot == "Lcobucci") {
 
-            array_shift($parts);
+            $jwt = strtolower(array_shift($parts));
+            array_unshift($parts, "src");
+            array_unshift($parts, $jwt);
             
             $path = implode( '/', $parts) . ".php";
             
@@ -23,8 +25,8 @@
 
             array_push($prefixes, "..");
             foreach ( $prefixes as $p ) {
-                if (file_exists($p . "/jwt/src/" . $path)) {
-                    include_once $p . "/jwt/src/" . $path;
+                if (file_exists($p . "/" . $path)) {
+                    include_once $p . "/" . $path;
                     break;
                 }
             }
