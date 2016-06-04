@@ -39,6 +39,8 @@ class TokenValidator extends EduIDValidator {
         // check for the authorization header
         $headers = getallheaders();
 
+        $this->log(json_encode($headers));
+        
         if (array_key_exists("Authorization", $headers) &&
             isset($headers["Authorization"]) &&
             !empty($headers["Authorization"]))
@@ -162,7 +164,7 @@ class TokenValidator extends EduIDValidator {
         return $this->jwt_token;
     }
 
-    public function verifyRawToken((string) $rawtoken) {
+    public function verifyRawToken($rawtoken) {
         if (isset($rawtoken) &&
             !empty($rawtoken) &&
             $rawtoken == $this->token) {
@@ -172,7 +174,7 @@ class TokenValidator extends EduIDValidator {
         return false;
     }
 
-    public function verifyJWTClaim((string) $claim, (string) $value) {
+    public function verifyJWTClaim($claim, $value) {
         if (isset($value) &&
             !empty($value) &&
             isset($claim) &&
@@ -185,7 +187,7 @@ class TokenValidator extends EduIDValidator {
 
         return false;
     }
-
+    
     protected function validate() {
         $this->valid = false;
 
@@ -273,34 +275,18 @@ class TokenValidator extends EduIDValidator {
                 return false;
             }
 
-            list($algo, $level) = explode("S", $alg);
-
-            switch ($algo) {
-                case "H": $algo = "Hmac"; break;
-                case "R": $algo = "Rsa"; break;
-                case "E": $algo = "Ecdsa"; break;
-                default: $algo = ""; break;
-            }
-            switch ($level) {
-                case "256":
-                case "384":
-                case "512":
-                    break;
-                default: $level = ""; break;
-            }
-
-            if (!empty($algo) && !empty($level)) {
-                $signerClass = "Signer\\" . $algo . "\\Sha" . $level;
-                $signer = new $signerClass();
-            }
+            $signer = $this->getSigner($alg);
 
             if (!isset($signer)) {
                 $this->log("no jwt signer found for " . $alg);
                 return false;
             }
 
-            if($this->jwt_token->verify($signer, $this->token_data["mac_key"])) {
-                $this->log("jwt signature does not match key");
+            if(!$this->jwt_token->verify($signer, $this->token_data["mac_key"])) {
+                                
+                $this->log("jwt signature does not match key '" . $this->token_data["mac_key"] . "'");
+                $this->log("using signer '" . $signerClass. "'");
+                $this->log("requested signer '" . $this->jwt_token->getHeader("alg") . "'");
                 return false;
             }
 
@@ -421,17 +407,17 @@ class TokenValidator extends EduIDValidator {
             else {
                 $payload .= $_SERVER["HTTP_HOST"] ."\n";
             }
-
-            $testMac = hash_hmac("sha1",
-                                 $payload,
-                                 $this->token_data["mac_key"]);
-
-            if ($testMac != $this->token_info["mac"]) {
+            
+            // NOTE: MAC appear to be replaced by JWTs. But we use the same algorithm
+            $signer = $this->getSigner($this->token_data["mac_algorithm"]);
+            
+            if (!$signer->verify(base64_decode($this->token_info["mac"]), 
+                                 $payload, 
+                                 $this->token_data["mac_key"])) {
 
                 // bad mac
                 $this->log("mac mismatch ");
                 $this->log("client token ". $this->token_info["mac"]);
-                $this->log("verify token ". $testMac);
 
                 return false;
             }
@@ -469,6 +455,34 @@ class TokenValidator extends EduIDValidator {
         $this->valid = true;
         return true;
     }
+ 
+    private function getSigner($alg) {
+        $signer = null;
+        
+        list($algo, $level) = explode("S", $alg);
+
+        switch ($algo) {
+            case "H": $algo = "Hmac"; break;
+            case "R": $algo = "Rsa"; break;
+            case "E": $algo = "Ecdsa"; break;
+            default: $algo = ""; break;
+        }
+        switch ($level) {
+            case "256":
+            case "384":
+            case "512":
+                break;
+            default: $level = ""; break;
+        }
+
+        if (!empty($algo) && !empty($level)) {
+            // NOTE: for dynamic namespaced classes the fully qualified name is needed.
+            $signerClass = "Lcobucci\\JWT\\Signer\\" . $algo . "\\Sha" . $level ;
+            $signer = new $signerClass();
+        }
+        
+        return $signer;
+    }
 
     private function extractToken() {
         $this->token_info = array();
@@ -478,8 +492,10 @@ class TokenValidator extends EduIDValidator {
             $aTokenItems = explode(',', $this->token);
             foreach ($aTokenItems as $item)
             {
-                $iKO = explode("=", $item);
-                $this->token_info[$iKO[0]] = $iKO[1];
+                $this->log($item);
+                list($key, $value) = explode("=", $item, 2);
+                $this->log($key . " :: " . $value);
+                $this->token_info[$key] = $value;
             }
         }
         else if ($this->token_type == "Bearer") {
@@ -508,7 +524,7 @@ class TokenValidator extends EduIDValidator {
             //$this->log('access_key: ' . $this->token_info["access_key"] );
         }
     }
-
+   
     private function findToken() {
         $aDBFields = array(
             "kid", "access_key", "mac_key", "mac_algorithm",

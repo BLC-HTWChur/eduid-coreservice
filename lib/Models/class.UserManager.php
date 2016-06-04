@@ -23,7 +23,6 @@ class UserManager extends DBManager {
                           "u.user_uuid "=> "user_uuid");
 
             foreach ($row as $k => $v) {
-                $this->log( "user data field:  " . $k);
                 $this->user[$k] = $v;
             }
             return true;
@@ -57,9 +56,9 @@ class UserManager extends DBManager {
 
     public function authenticate( $password ) {
         if (isset($this->user) && !empty($this->user)) {
-
+            
             $pwd = sha1($this->user["salt"] . $password);
-
+            
             if ($pwd == $this->user["user_passwd"] ) {
                 return true;
             }

@@ -28,17 +28,70 @@ class ServiceManager extends DBManager{
 
     public function setOptions($options) {}
 
-    public function findUserServices($user_id) {}
+    public function findUserServices($user_id) {
+        $sqlstr = "SELECT service_uuid, name, mainurl, token_endpoint, info from services s, serviceusers su where su.service_uuid = s.service_uuid and su.user_uuid = ?";
+    
+        $retval = array();
+        if (isset($user_id) && !empty($user_id)) {
+    
+            $sth = $this->db->prepare($sqlstr, array("TEXT"));
+            $res = $sth->execute(array($uuid));
 
-    public function findServiceByID($service_id) {
+            while ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
+                $service = array();
+                foreach ($row as $f => $v) {
+                    if (isset($v) && !empty($v)) {
+                        switch ($f) {
+                            case "extra":
+                            case "info":
+                                $service[$f] = json_decode($v);
+                                break;
+                            default:
+                                $service[$f] = $v;
+                                break;
+                        }
+                    }
+                }
+
+                if (!empty($service)) {
+                    array_push($retval, $service);
+                }
+            }
+            $sth->free();
+        }
+            
+        return $retval;
+    }
+
+    /**
+     * find service by service id
+     * 
+     * @public function findServiceById($id)
+     *
+     * @param string $id : the uuid of the requested service.
+     * @return bool : true - id has been found, otherwise not. 
+     */
+    public function findServiceById($service_id) {
         if (isset($service_id) && !empty($service_id)) {
-            $this->findService(array("service_uuid" => $service_id));
+            return $this->findService(array("service_uuid" => $service_id));
         }
     }
-    public function findServiceURI($service_uri) {
+    
+    /**
+     * find service by service URL
+     * 
+     * @public function findServiceByURI($id)
+     *
+     * @param string $uri : the uri of the requested service.
+     * @return bool : true - id has been found, otherwise not. 
+     *
+     * The function checks if the provided endpoint is either the main service URL
+     * or a token endpoint. In both cases the service will get loaded.
+     */
+    public function findServiceByURI($service_uri) {
         if (isset($service_uri) && !empty($service_uri)) {
-            $this->findService(array("mainurl"        =>$service_uri,
-                                     "token_endpoint" => $service_uri));
+            return $this->findService(array("mainurl"        =>$service_uri,
+                                            "token_endpoint" => $service_uri));
         }
     }
 
@@ -86,12 +139,18 @@ class ServiceManager extends DBManager{
 
                 $sth->free();
             }
+        
+            if (isset($this->service)) {
+                return true;
+            }
         }
+        
+        return false;
     }
 
     public function getTokenEndpoint() {
         if (isset($this->service)) {
-            return $this->service["token"]["key"];
+            return $this->service["token_endpoint"];
         }
         return null;
     }
@@ -124,7 +183,7 @@ class ServiceManager extends DBManager{
         }
 
         if (!empty($alg) && !empty($level)) {
-            $signerClass = "Signer\\" .$alg . "\\Sha" . $level;
+            $signerClass = "Lcobucci\\JWT\\Signer\\" .$alg . "\\SHA" . $level;
             $retval = new $signerClass();
         }
 

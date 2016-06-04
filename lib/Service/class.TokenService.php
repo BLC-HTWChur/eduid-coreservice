@@ -19,30 +19,29 @@ class TokenService extends ServiceFoundation {
     public function __construct() {
         parent::__construct();
 
-        $this->queryOperation("grant_type");
+        $this->setOperationParameter("grant_type");
 
         $this->tokenValidator->resetAcceptedTokens(array("Bearer", "MAC"));
 
         $this->dataValidator = new TokenDataValidator($this->db);
-        $this->dataValidator->requireEmpty("get");
+
         $this->addDataValidator($this->dataValidator);
     }
 
-    public function verifyRawToken((string) $code) {
+    public function verifyRawToken($code) {
         return $this->tokenValidator->verifyRawToken($code);
     }
 
-    public function verifyTokenClaim((string) $claim, (string) $value) {
+    public function verifyTokenClaim($claim, $value) {
         return $this->tokenValidator->verifyJWTClaim($claim, $value);
     }
 
     public function getAuthToken() {
         return $this->tokenValidator->getToken();
     }
-
-    protected function get() {
-        $this->data = array("status"=> "OK",
-                            "message"=>"POST information");
+    
+    public function getJWT() {
+        return $this->tokenValidator->getJWT();
     }
 
     protected function post_password() { // OAuth2 Section 4.3.2
@@ -50,7 +49,7 @@ class TokenService extends ServiceFoundation {
         $tokenType = "MAC";
         $tm = $this->tokenValidator->getTokenIssuer($tokenType);
 
-        $um = $this->userValidator->getUser();
+        $um = $this->dataValidator->getUser();
         if ($um->authenticate($this->inputData["password"])) {
 
             $tm->addToken(array("user_uuid" => $um->getUUID()));
@@ -74,36 +73,42 @@ class TokenService extends ServiceFoundation {
             $this->forbidden();
         }
     }
-
+    
     protected function post_client_credentials() {
         $token = $this->getAuthToken();
+        
+        // transpose token claims
+        $jwt = $this->getJWT();
+        $this->inputData["device_name"] = $jwt->getClaim("name");
+        $this->inputData["device_id"]   = $jwt->getClaim("sub");
 
         $tokenType = "MAC";
-
         $tm = $this->tokenValidator->getTokenIssuer($tokenType);
 
         // get the root token info
-        $ciToken = $this->tokenValidator->getToken();
+        $clientToken = $this->tokenValidator->getToken();
 
-        $token_extra = array("client_type" => $ciToken["kid"],
+        $this->log(json_encode($this->inputData));
+        
+        $token_extra = array("client_type" => $clientToken["kid"],
                              "device_name" => $this->inputData["device_name"]);
 
         // get extra info from the current token
         $tm->addToken(array("client_id" => $this->inputData["device_id"],
-                            "extra": $token_extra));
+                            "extra"     => $token_extra));
 
         $token = $tm->getToken();
 
         $this->data = array(
-            "access_token"  => $ut["access_key"],
-            "token_type"    => strtolower($ut["token_type"]),
-            "kid"           => $ut["kid"],
-            "mac_key"       => $ut["mac_key"],
-            "mac_algorithm" => $ut["mac_algorithm"]
+            "access_token"  => $token["access_key"],
+            "token_type"    => strtolower($token["token_type"]),
+            "kid"           => $token["kid"],
+            "mac_key"       => $token["mac_key"],
+            "mac_algorithm" => $token["mac_algorithm"]
         );
 
-        if (array_key_exists("expires_in", $ut)) {
-            $this->data["expires_in"] = $ut["expires_in"];
+        if (array_key_exists("expires_in", $token) && !empty($token["expires_in"])) {
+            $this->data["expires_in"] = $token["expires_in"];
         }
     }
 
@@ -120,7 +125,7 @@ class TokenService extends ServiceFoundation {
         $profile = $profiles[0]["extra"];
         $profile["email"] = $profiles[0]["mailaddress"];
 
-        $tm = $this->tokenvalidator->getTokenIssuer($tokenType);
+        $tm = $this->tokenValidator->getTokenIssuer($tokenType);
 
         $tm->addToken();
 
