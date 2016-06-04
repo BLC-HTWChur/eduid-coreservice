@@ -492,9 +492,7 @@ class TokenValidator extends EduIDValidator {
             $aTokenItems = explode(',', $this->token);
             foreach ($aTokenItems as $item)
             {
-                $this->log($item);
                 list($key, $value) = explode("=", $item, 2);
-                $this->log($key . " :: " . $value);
                 $this->token_info[$key] = $value;
             }
         }
