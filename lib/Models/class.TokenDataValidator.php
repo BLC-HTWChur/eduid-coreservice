@@ -47,7 +47,7 @@ class TokenDataValidator extends EduIDValidator {
     
     private function checkGrantType() {
         if (method_exists($this, "check_" . $this->data["grant_type"])) {
-            return call_user_func(array($this, "check_" . $this->operation)); 
+            return call_user_func(array($this, "check_" . $this->data["grant_type"])); 
         }
         
         $this->log("bad grant type found " . $this->data["grant_type"]);
@@ -64,7 +64,7 @@ class TokenDataValidator extends EduIDValidator {
         
         if (!(array_key_exists("extra", $token) &&
               array_key_exists("client_type", $token["extra"]) &&
-              $token["extra"]["client_type"] != $this->data["client_id"])) {
+              $token["extra"]["client_type"] == $this->data["client_id"])) {
             
             $this->log("mismatching eduid app id presented");
             return false;
@@ -73,7 +73,7 @@ class TokenDataValidator extends EduIDValidator {
         $service = $this->service->getTargetService();
         $service->findServiceByURI($this->data["redirect_uri"]);
         
-        if ($service->hasUUID()) {
+        if (!$service->hasUUID()) {
             $this->log("no service found for URI " . $this->data["redirect_uri"]);
             return false;
         }
