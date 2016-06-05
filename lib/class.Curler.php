@@ -20,7 +20,12 @@ class Curler {
     
     public function __construct($options) {
         
-        $this->protocol   = array_key_exists("protocol", $options) ? $options["protocol"] : "http";
+        if (is_string($options)) {
+            // we got a url
+            $options = parse_url($options);
+        }
+        
+        $this->protocol   = array_key_exists("scheme", $options) ? $options["scheme"] : "http";
         $this->host       = array_key_exists("host", $options) ? $options["host"] : "";
         $this->base_url   = array_key_exists("path", $options) ? $options["path"] : "";
         $this->path_info  = array_key_exists("path_info", $options) ? $options["path_info"] : "";
@@ -28,7 +33,16 @@ class Curler {
         $this->out_header = array();
     }
     
-    public function setPathInfo($pi) {
+    public function setPath($path) {
+        if (isset($path) && !empty($path) && is_string($path)) {
+            $this->base_url = $path;
+        }
+        else {
+            $this->base_url = "/";
+        }
+    }
+    
+    public function setPathInfo($pi="") {
         $this->path_info = $pi;
     }
     
@@ -36,6 +50,9 @@ class Curler {
         $this->param = $p;
     }
     
+    public function getLastUri(){
+        return $this->next_url;
+    }
     public function setHeader($p) {
         $this->out_header = $p;
     }
@@ -50,8 +67,11 @@ class Curler {
     
     private function prepareUri() {
         $this->path_info = ltrim($this->path_info, "/");
-        $this->next_url  = $this->protocol . "://" . $this->host . $this->base_url . "/" . $this->path_info;
-            
+        $this->next_url  = $this->protocol . "://" . $this->host . $this->base_url;
+        if (isset($this->path_info) && !empty($this->path_info)) {
+            $this->next_url .= "/" . $this->path_info;
+        }
+                
         if (!empty($this->param)) {
             $tp = array();
             foreach ($this->param as $k => $v) {
