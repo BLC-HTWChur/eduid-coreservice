@@ -557,7 +557,12 @@ class TokenValidator extends EduIDValidator {
                 $this->token_data = array();
 
                 foreach ($row as $key => $value) {
-                    $this->token_data[$key] = $value;
+                    if ($key === "extra") {
+                        $this->token_data[$key] = json_decode($value, true);
+                    }
+                    else {
+                        $this->token_data[$key] = $value;
+                    }
                 }
 
                 $this->token_key = $this->token_data["access_key"];
