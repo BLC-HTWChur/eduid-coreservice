@@ -39,7 +39,6 @@ $jwt->setIssuer('io.mobinaut.test');
 $jwt->setAudience("http://192.168.0.72/eduid/eduid.php/token");
 
 $jwt->setHeader("kid", $kid);
-// $jwt->setId('123asd3414fafr23r');
         
 $jwt->setSubject("phish@lo-f.at"); // use my email as device id 
 $jwt->set("name", "phishs tester"); // use fake name
@@ -93,6 +92,5 @@ echo $c->getBody() . "\n";
 $b = json_decode($c->getBody());
 $a = explode('.', $b->access_token);
 echo base64_decode($a[1]) . "\n";
-
 
 ?>
