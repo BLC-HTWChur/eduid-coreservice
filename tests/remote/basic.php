@@ -77,12 +77,22 @@ $c->post($jsonData, "application/json");
 echo ($c->getStatus() == 200 ? "OK": "FAILED");
 echo "\n";
 
-if ($c->getStatus() == 200) {
-    $userToken = json_decode($c->getBody(), true);
-    $c->setMacToken($userToken); // now we are logged in
-}
+$userToken = json_decode($c->getBody(), true);
+$c->setMacToken($userToken); // now we are logged in
 
+$d = array("grant_type" => "authorization_code", "redirect_uri" => "https://moodle.htwchur.ch", "code" => $userToken["access_token"], "client_id" => 'io.mobinaut.test');
 
+$jsonData = json_encode($d);
+$c->post($jsonData, "application/json");
+
+echo ($c->getStatus() == 200 ? "OK": "FAILED");
+echo "\n";
+echo $c->getStatus() . "\n";
+
+echo $c->getBody() . "\n";
+$b = json_decode($c->getBody());
+$a = explode('.', $b->access_token);
+echo base64_decode($a[1]) . "\n";
 
 
 ?>
