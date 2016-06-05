@@ -237,14 +237,24 @@ class TokenManager extends DBManager{
                     array_key_exists($key, $this->root_token) &&
                     isset($this->root_token[$key]) &&
                     !empty($this->root_token[$key])) {
-                    $newToken[$key] = $this->root_token[$key];
+                    if ($key === "extra") {
+                        $newToken[$key] = json_encode($this->root_token[$key]);
+                    }
+                    else {
+                        $newToken[$key] = $this->root_token[$key];
+                    }
                 }
 
                 if (array_key_exists($key, $token) &&
                     isset($token[$key]) &&
                     !empty($token[$key])) {
 
-                    $newToken[$key] = $token[$key];
+                    if ($key === "extra") {
+                        $newToken[$key] = json_encode($token[$key]);
+                    }
+                    else {
+                        $newToken[$key] = $token[$key];
+                    }
                 }
             }
 
@@ -272,6 +282,7 @@ class TokenManager extends DBManager{
                 }
                 else {
                     $this->token = $newToken;
+                    $this->token["extra"] = json_decode($this->token["extra"], true);
                     if (isset($this->expires_in) &&
                         $this->expires_in > 0) {
                         $this->token["expires_in"] = $this->expires_in;
@@ -354,7 +365,7 @@ class TokenManager extends DBManager{
                 $this->token["parent_key"]        = $row[3];
                 $this->token["ttl"]               = $row[4];
                 $this->token["consumed"]          = $row[5];
-                $this->token["extra"]             = $row[6];
+                $this->token["extra"]             = json_decode($row[6], true);
                 $this->token["seq_nr"]            = $row[7];
                 $this->token["mac_key"]           = $row[8];
                 $this->token_data["domain"]       = $row[9];
@@ -400,7 +411,7 @@ class TokenManager extends DBManager{
                 $this->root_token["parent_key"]   = $row[3];
                 $this->root_token["ttl"]          = $row[4];
                 $this->root_token["consumed"]     = $row[5];
-                $this->root_token["extra"]        = $row[6];
+                $this->root_token["extra"]        = json_decode($row[6], true);
                 $this->root_token["seq_nr"]       = $row[7];
                 $this->root_token["mac_key"]      = $row[8];
                 $this->root_token["domain"]       = $row[9];

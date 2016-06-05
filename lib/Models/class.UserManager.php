@@ -88,7 +88,7 @@ class UserManager extends DBManager {
                 foreach ($row as $f => $v) {
                     if (isset($v) && !empty($v)) {
                         if ($f == "extra") {
-                            $aProfile[$f] = json_decode($v);
+                            $aProfile[$f] = json_decode($v, true);
                         }
                         else {
                             $aProfile[$f] = $v;

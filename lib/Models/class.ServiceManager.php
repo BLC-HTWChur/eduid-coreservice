@@ -24,9 +24,26 @@ class ServiceManager extends DBManager{
             "token"           => "TEXT",
             "info"            => "TEXT"
         );
+        
+        $this->service = array();
     }
 
     public function setOptions($options) {}
+    
+    public function getUUID() {
+        if (array_key_exists("service_uuid", $this->service)) {
+            return $this->service["service_uuid"];
+        }
+        return null;
+    }
+    
+    public function hasUUID() {
+        if (!array_key_exists("service_uuid", $this->service) ||
+            empty($this->service["service_uuid"])) {
+            return false;
+        }
+        return true;
+    }
 
     public function findUserServices($user_id) {
         $sqlstr = "SELECT service_uuid, name, mainurl, token_endpoint, info from services s, serviceusers su where su.service_uuid = s.service_uuid and su.user_uuid = ?";
@@ -35,16 +52,21 @@ class ServiceManager extends DBManager{
         if (isset($user_id) && !empty($user_id)) {
     
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
-            $res = $sth->execute(array($uuid));
+            $res = $sth->execute(array($user_id));
 
             while ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
                 $service = array();
                 foreach ($row as $f => $v) {
                     if (isset($v) && !empty($v)) {
                         switch ($f) {
-                            case "extra":
+                            case "token":
                             case "info":
-                                $service[$f] = json_decode($v);
+                                if (!empty($v)) {
+                                    $service[$f] = json_decode($v, true);
+                                }
+                                else {
+                                    $service[$f] = array();
+                                }
                                 break;
                             default:
                                 $service[$f] = $v;
@@ -104,7 +126,7 @@ class ServiceManager extends DBManager{
             $types  = array();
             $values = array();
             foreach (array("service_uuid", "mainurl", "token_endpoint") as $k) {
-                if (array_key_exisis($k, $options)) {
+                if (array_key_exists($k, $options)) {
                     array_push($filter, $k . '= ?');
                     array_push($types, $this->dbKeys[$k]);
                     array_push($values, $options[$k]);
@@ -114,16 +136,21 @@ class ServiceManager extends DBManager{
                 $sqlstr .= implode(" OR ", $filter);
 
                 $sth = $this->db->prepare($sqlstr, array("TEXT"));
-                $res = $sth->execute(array($uuid));
+                $res = $sth->execute($values);
 
                 if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
                     $service = array();
                     foreach ($row as $f => $v) {
                         if (isset($v) && !empty($v)) {
                             switch ($f) {
-                                case "extra":
+                                case "token":
                                 case "info":
-                                    $service[$f] = json_decode($v);
+                                    if (!empty($v)) {
+                                        $service[$f] = json_decode($v, true);
+                                    }
+                                    else {
+                                        $service[$f] = array();
+                                    }
                                     break;
                                 default:
                                     $service[$f] = $v;
