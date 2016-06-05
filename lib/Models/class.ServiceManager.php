@@ -38,8 +38,10 @@ class ServiceManager extends DBManager{
     }
     
     public function hasUUID() {
-        if (!array_key_exists("service_uuid", $this->service) ||
-            empty($this->service["service_uuid"])) {
+        if (!(is_array($this->service) && 
+              array_key_exists("service_uuid", $this->service) &&
+              !empty($this->service["service_uuid"]))) {
+            
             return false;
         }
         return true;
