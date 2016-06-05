@@ -7,7 +7,7 @@ set_include_path("../../lib" . PATH_SEPARATOR .
 include_once('RESTling/contrib/Restling.auto.php');
 include_once('eduid.autoloader.php');
 
-require('./class.curler.php');
+require('class.Curler.php');
 
 $taddr = "192.168.0.72";
 $tpath = "/eduid/eduid.php";
