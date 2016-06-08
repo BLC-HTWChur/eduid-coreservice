@@ -13,7 +13,7 @@ class TokenManager extends DBManager{
     protected $token_type = "Bearer";  // service, client, user
     protected $uuid;        // respective uuid
 
-    protected $mac_algorithm  = "hmac-sha-1";
+    protected $mac_algorithm  = "HS256"; // use only JWA names
     protected $expires_in     = 0;
     protected $max_seq        = 0;
     protected $use_sequence   = false;
@@ -23,8 +23,6 @@ class TokenManager extends DBManager{
 
     public function __construct($db, $options=array()) {
         parent::__construct($db);
-
-        $this->setOptions($options);
 
         $this->dbKeys = array(
             "kid"           => "TEXT",
@@ -51,6 +49,8 @@ class TokenManager extends DBManager{
             "mac_key"    => 100,
             "kid"        => 10
         );
+
+         $this->setOptions($options);
     }
 
     public function setOptions($options) {
@@ -58,9 +58,30 @@ class TokenManager extends DBManager{
             if (array_key_exists("expires_in", $options)) {
                 $this->expires_in = $options["expires_in"];
             }
-            if (array_key_exists("mac_algorithm", $options)) {
+
+            // we allow only JWA algorithms
+            $aAlg = explode(" ",
+                            "HS256 HS384 HS512 RS256 RS384 RS512 ES256 ES384 ES512 hmac-sha-256");
+
+            if (array_key_exists("mac_algorithm", $options) &&
+                in_array($options["mac_algorithm"], $aAlg)) {
+
+                if ($options["mac_algorithm"] == "hmac-sha-256") {
+
+                    $options["mac_algorithm"] = "HS256";
+                }
                 $this->mac_algorithm = $options["mac_algorithm"];
             }
+            if (array_key_exists("alg", $options) &&
+                in_array($options["alg"], $aAlg)) {
+
+                if ($options["alg"] == "hmac-sha-256") {
+
+                    $options["alg"] = "HS256";
+                }
+                $this->mac_algorithm = $options["alg"];
+            }
+
             if (array_key_exists("use_sequence", $options)) {
                 $this->use_sequence = $options["use_ssequence"]; // evaluates as Boolean
             }
@@ -152,6 +173,49 @@ class TokenManager extends DBManager{
     }
 
     /**
+     * create a basic token
+     *
+     * @public function arrary newToken($type)
+     *
+     * @param string $type - token type
+     *
+     * initializes a basic token. If type is Bearer, then an identical
+     * access_key and kid are generated. For all other types a full token
+     * is generated, consisting of a unique access_key, kid, mac_key, and
+     * mac_algorithm.
+     *
+     * If token expiration is set, then this function also includes the
+     * expiration timestamp;
+     */
+    public function newToken($type="MAC") {
+        $newToken = array();
+
+        $newToken["access_key"] = $this->randomString($this->tokenLength["access_key"]);
+        if ($type == "Bearer") {
+            $newToken["kid"] = $newToken["access_key"];
+        }
+        else {
+            $newToken["kid"] = $this->randomString($this->tokenLength["kid"]);
+
+            if (isset($this->mac_algorithm) &&
+                !empty($this->mac_algorithm)) {
+                $newToken["mac_algorithm"] = $this->mac_algorithm;
+            }
+
+            $newToken["mac_key"] = $this->randomString($this->tokenLength["mac_key"]);
+        }
+
+        if (isset($this->expires_in) &&
+                     $this->expires_in > 0) {
+
+            $now = time();
+            $newToken["expires"] = $now + $this->expires_in;
+        }
+
+        return $newToken;
+    }
+
+    /**
      * function addToken
      *
      * initialise a token.
@@ -178,7 +242,7 @@ class TokenManager extends DBManager{
             $type = $token["token_type"];
         }
 
-        $newToken = array();
+        $newToken = $this->newToken($type);
 
         if (isset($this->root_token)) {
             if (!isset($type) || empty($type)) {
@@ -202,27 +266,6 @@ class TokenManager extends DBManager{
             else if (isset($this->max_seq) &&
                      $this->max_seq > 0) {
                 $newToken["max_seq"] = $this->max_seq;
-            }
-
-            if (isset($this->expires_in) &&
-                     $this->expires_in > 0) {
-                $now = time();
-                $newToken["expires"] = $now + $this->expires_in;
-            }
-
-            $newToken["access_key"] = $this->randomString($this->tokenLength["access_key"]);
-            if ($type == "Bearer") {
-                $newToken["kid"] = $newToken["access_key"];
-            }
-            else {
-                $newToken["kid"] = $this->randomString($this->tokenLength["kid"]);
-
-                if (isset($this->mac_algorithm) &&
-                    !empty($this->mac_algorithm)) {
-                    $newToken["mac_algorithm"] = $this->mac_algorithm;
-                }
-
-                $newToken["mac_key"] = $this->randomString($this->tokenLength["mac_key"]);
             }
 
             foreach(array("user_uuid",

@@ -40,7 +40,7 @@ class TokenValidator extends EduIDValidator {
         $headers = getallheaders();
 
         $this->log(json_encode($headers));
-        
+
         if (array_key_exists("Authorization", $headers) &&
             isset($headers["Authorization"]) &&
             !empty($headers["Authorization"]))
@@ -66,12 +66,7 @@ class TokenValidator extends EduIDValidator {
     }
 
     public function getTokenManager($type) {
-        require_once("Models/class.TokenManager.php");
-
-        $tm = new TokenManager($this->db);
-        $tm->setToken($this->token_data);
-
-        return $tm;
+        return $this->getTokenIssuer($type);
     }
 
     public function getTokenUser() {
@@ -187,7 +182,7 @@ class TokenValidator extends EduIDValidator {
 
         return false;
     }
-    
+
     protected function validate() {
         $this->valid = false;
 
@@ -208,11 +203,19 @@ class TokenValidator extends EduIDValidator {
             return false;
         }
 
+        $fname = "validate_" . strtolower($this->token_type);
+
+        // make authorization scheme validation more flexible
+        if (!method_exists($this, $fname)) {
+            $this->log("authorization method not supported")
+            return false;
+        }
+
         if (!empty($this->accept_list) &&
             !in_array($this->token_type, $this->accept_list)) {
 
             // the script does not accept the provided token type;
-            $this->log("token type not acecpted available");
+            $this->log("token type not acecpted");
 
             return false;
         }
@@ -256,189 +259,22 @@ class TokenValidator extends EduIDValidator {
             return false;
         }
 
-        if ($this->token_type == "Bearer") {
-            // FIXME: TEST IF THE RAW TOKEN IS A KID in the DB
-
-            // run JWT validation
-            $alg = $this->jwt_token->getHeader("alg");
-
-            if (!isset($alg) || empty($alg)) {
-                $this->log("reject unprotected jwt");
-                return false;
-            }
-
-            // enforce algorithm
-            if ($this->token_data["mac_algorithm"] != $alg) {
-                $this->log("invalid jwt sign method presented");
-                $this->log("expected: '" . $this->token_data["mac_algorithm"] ."'");
-                $this->log("received: '" . $alg."'");
-                return false;
-            }
-
-            $signer = $this->getSigner($alg);
-
-            if (!isset($signer)) {
-                $this->log("no jwt signer found for " . $alg);
-                return false;
-            }
-
-            if(!$this->jwt_token->verify($signer, $this->token_data["mac_key"])) {
-                                
-                $this->log("jwt signature does not match key '" . $this->token_data["mac_key"] . "'");
-                $this->log("using signer '" . $signerClass. "'");
-                $this->log("requested signer '" . $this->jwt_token->getHeader("alg") . "'");
-                return false;
-            }
-
-            if ($this->jwt_token->getClaim("iss") != $this->token_data["client_id"]) {
-                $this->log("jwt issuer does not match");
-                $this->log("expected: " . $this->token_data["client_id"]);
-                $this->log("expected: " . $this->jwt_token->getClaim("iss"));
-                return false;
-            }
-
-            // ignore sub, aud, and name for the time being.
-        }
-        else if ($this->token_type == "MAC") {
-            // Run MAC compoarison
-
-            if (!isset($this->token_info["mac"]) ||
-                empty($this->token_info["mac"])) {
-
-                // token is not signed ignore
-                $this->log("token is not signed ignore");
-                return false;
-            }
-
-            // check sequence
-            if (!isset($this->token_info["ts"]) ||
-                empty($this->token_info["ts"])) {
-
-                // missing timestamp
-                $this->log("missing timestamp");
-
-                return false;
-            }
-
-            // verify implicit sequence, don't allow resuing the time
-            if (isset($this->token_data["last_access"]) &&
-                $this->token_data["last_access"] > 0 &&
-                $this->token_info["ts"] <= $this->token_data["last_access"]) {
-
-                $this->log("new request is older that previous one");
-                $this->service->forbidden();
-                return false;
-            }
-
-            $this->updateLastAccess();
-
-            if ($this->token_data["seq_nr"] > 0 &&
-                (!isset($this->token_info["seq_nr"]) ||
-                empty($this->token_info["seq_nr"]))) {
-
-                // no sequence provided
-                $this->log("missing seq_nr but requested");
-
-                $this->consumeToken();
-                return false;
-            }
-
-            if ($this->token_data["seq_nr"] > 0 &&
-                $this->token_info["seq_nr"] != $this->token_data["seq_nr"]) {
-                // out of bounds
-                $this->consumeToken();
-                $this->log("token sequence out of bounds");
-
-                return false;
-            }
-
-            if ($this->token_data["seq_nr"] == 1 &&
-                (!isset($this->token_info["access_token"]) ||
-                 empty($this->token_info["access_token"]))) {
-
-                if ($this->token_info["access_token"] != $this->token_key) {
-                    // invalid token during handshake
-                    $this->log("bad token handshake");
-
-                    return false;
-                }
-            }
-
-            // at this point we have to increase the sequence
-            if ($this->token_data["seq_nr"] > 0) {
-                $this->sequenceStep();
-                // $this->log("seq step");
-            }
-
-            // first line is METHOD REQPATH+GETPARAM PROTOCOL VERSION
-            // protocol version is (HTTP/1.1 or HTTP/2.0)
-            $payload =  $_SERVER['REQUEST_METHOD'] . " " .
-                        $_SERVER['REQUEST_URI'] . " " .
-                        $_SERVER['SERVER_PROTOCOL']. "\n";
-
-            $payload .=  $this->token_info["ts"] ."\n";
-
-            if (array_key_exists("h", $this->token_info)) {
-                $aTokenHeaders  = explode(":");
-                $aRequestHeader = getallheaders();
-
-                foreach ($aTokenHeaders as $header) {
-                    switch($header) {
-                        case "host":
-                            $payload .= $_SERVER[HTTP_HOST] ."\n";
-                            break;
-                        case "client":
-                            if (!empty($this->token_data["client_id"])) {
-                                $payload .= $this->token_data["client_id"] ."\n";
-                            }
-                            break;
-                        default:
-                            if (array_key_exists($header, $aRequestHeader)) {
-                                $payload .= $aRequestHeader[$header] . "\n";
-                            }
-                            else {
-                                // according to RFC add NULL Content
-                                $payload .= "\n";
-                            }
-                            break;
-                    }
-                }
-            }
-            else {
-                $payload .= $_SERVER["HTTP_HOST"] ."\n";
-            }
-            
-            // NOTE: MAC appear to be replaced by JWTs. But we use the same algorithm
-            $signer = $this->getSigner($this->token_data["mac_algorithm"]);
-            
-            if (!$signer->verify(base64_decode($this->token_info["mac"]), 
-                                 $payload, 
-                                 $this->token_data["mac_key"])) {
-
-                // bad mac
-                $this->log("mac mismatch ");
-                $this->log("client token ". $this->token_info["mac"]);
-
-                return false;
-            }
-        }
-        else {
-            if (!isset($this->token_info["access_key"])) {
-                $this->log("missing client secret");
-                return false;
-            }
-
-            // at this point we have to increase the sequence
-            if ($this->token_data["seq_nr"] > 0) {
-                $this->sequenceStep();
-            }
-
-            if ($this->token_info["access_key"] != $this->token_data["access_key"]) {
-                $this->log("wrong client secret as access key");
-                return false;
-            }
+        // eventually we want to run authorization specific validation
+        if (!call_user_func(array($this, $fname))) {
+            return false;
         }
 
+        if (!isset($this->token_info["access_key"])) {
+            $this->log("missing client secret");
+            return false;
+        }
+
+        // at this point we have to increase the sequence
+        if ($this->token_data["seq_nr"] > 0) {
+            $this->sequenceStep();
+        }
+
+        // this logic should be part of token manager
         if (isset($this->token_data) &&
             !empty($this->token_data)) {
 
@@ -455,10 +291,185 @@ class TokenValidator extends EduIDValidator {
         $this->valid = true;
         return true;
     }
- 
+
+    // auth type specific validation
+
+    protected function validate_bearer() {
+        // validate flat bearer is already complete by now
+        return true;
+    }
+
+    protected function validate_jwt() {
+        $alg = $this->jwt_token->getHeader("alg");
+
+        if (!isset($alg) || empty($alg)) {
+            $this->log("reject unprotected jwt");
+            return false;
+        }
+
+        // enforce algorithm
+        if ($this->token_data["mac_algorithm"] != $alg) {
+
+            $this->log("invalid jwt sign method presented");
+            $this->log("expected: '" . $this->token_data["mac_algorithm"] ."'");
+            $this->log("received: '" . $alg."'");
+            return false;
+        }
+
+        $signer = $this->getSigner($alg);
+
+        if (!isset($signer)) {
+            $this->log("no jwt signer found for " . $alg);
+            return false;
+        }
+
+        if(!$this->jwt_token->verify($signer, $this->token_data["mac_key"])) {
+
+            $this->log("jwt signature does not match key '" . $this->token_data["mac_key"] . "'");
+            $this->log("using signer '" . $signerClass. "'");
+            $this->log("requested signer '" . $this->jwt_token->getHeader("alg") . "'");
+            return false;
+        }
+
+        if ($this->jwt_token->getClaim("iss") != $this->token_data["client_id"]) {
+            $this->log("jwt issuer does not match");
+            $this->log("expected: " . $this->token_data["client_id"]);
+            $this->log("expected: " . $this->jwt_token->getClaim("iss"));
+            return false;
+        }
+
+        // ignore sub, aud, and name for the time being.
+
+        return true;
+    }
+
+    protected function validate_mac() {
+        if (!isset($this->token_info["mac"]) ||
+            empty($this->token_info["mac"])) {
+
+            // token is not signed ignore
+            $this->log("token is not signed ignore");
+            return false;
+        }
+
+        // check sequence
+        if (!isset($this->token_info["ts"]) ||
+            empty($this->token_info["ts"])) {
+
+            // missing timestamp
+            $this->log("missing timestamp");
+
+            return false;
+        }
+
+        // verify implicit sequence, don't allow resuing the time
+        if (isset($this->token_data["last_access"]) &&
+            $this->token_data["last_access"] > 0 &&
+            $this->token_info["ts"] <= $this->token_data["last_access"]) {
+
+            $this->log("new request is older that previous one");
+            $this->service->forbidden();
+            return false;
+        }
+
+        $this->updateLastAccess();
+
+        if ($this->token_data["seq_nr"] > 0 &&
+            (!isset($this->token_info["seq_nr"]) ||
+            empty($this->token_info["seq_nr"]))) {
+
+            // no sequence provided
+            $this->log("missing seq_nr but requested");
+
+            $this->consumeToken();
+            return false;
+        }
+
+        if ($this->token_data["seq_nr"] > 0 &&
+            $this->token_info["seq_nr"] != $this->token_data["seq_nr"]) {
+            // out of bounds
+            $this->consumeToken();
+            $this->log("token sequence out of bounds");
+
+            return false;
+        }
+
+        if ($this->token_data["seq_nr"] == 1 &&
+            (!isset($this->token_info["access_token"]) ||
+             empty($this->token_info["access_token"]))) {
+
+            if ($this->token_info["access_token"] != $this->token_key) {
+                // invalid token during handshake
+                $this->log("bad token handshake");
+
+                return false;
+            }
+        }
+
+        // at this point we have to increase the sequence
+        if ($this->token_data["seq_nr"] > 0) {
+            $this->sequenceStep();
+            // $this->log("seq step");
+        }
+
+        // first line is METHOD REQPATH+GETPARAM PROTOCOL VERSION
+        // protocol version is (HTTP/1.1 or HTTP/2.0)
+        $payload =  $_SERVER['REQUEST_METHOD'] . " " .
+                    $_SERVER['REQUEST_URI'] . " " .
+                    $_SERVER['SERVER_PROTOCOL']. "\n";
+
+        $payload .=  $this->token_info["ts"] ."\n";
+
+        if (array_key_exists("h", $this->token_info)) {
+            $aTokenHeaders  = explode(":");
+            $aRequestHeader = getallheaders();
+
+            foreach ($aTokenHeaders as $header) {
+                switch($header) {
+                    case "host":
+                        $payload .= $_SERVER[HTTP_HOST] ."\n";
+                        break;
+                    case "client":
+                        if (!empty($this->token_data["client_id"])) {
+                            $payload .= $this->token_data["client_id"] ."\n";
+                        }
+                        break;
+                    default:
+                        if (array_key_exists($header, $aRequestHeader)) {
+                            $payload .= $aRequestHeader[$header] . "\n";
+                        }
+                        else {
+                            // according to RFC add NULL Content
+                            $payload .= "\n";
+                        }
+                        break;
+                }
+            }
+        }
+        else {
+            $payload .= $_SERVER["HTTP_HOST"] ."\n";
+        }
+
+        // NOTE: MAC appear to be replaced by JWTs. But we use the same algorithm
+        $signer = $this->getSigner($this->token_data["mac_algorithm"]);
+
+        if (!$signer->verify(base64_decode($this->token_info["mac"]),
+                             $payload,
+                             $this->token_data["mac_key"])) {
+
+            // bad mac
+            $this->log("mac mismatch ");
+            $this->log("client token ". $this->token_info["mac"]);
+
+            return false;
+        }
+
+        return true;
+    }
+
     private function getSigner($alg) {
         $signer = null;
-        
+
         list($algo, $level) = explode("S", $alg);
 
         switch ($algo) {
@@ -480,7 +491,7 @@ class TokenValidator extends EduIDValidator {
             $signerClass = "Lcobucci\\JWT\\Signer\\" . $algo . "\\Sha" . $level ;
             $signer = new $signerClass();
         }
-        
+
         return $signer;
     }
 
@@ -498,13 +509,26 @@ class TokenValidator extends EduIDValidator {
         }
         else if ($this->token_type == "Bearer") {
             $jwt = new JWT\Parser();
-            $token = $jwt->parse($this->token);
+            try {
+                $token = $jwt->parse($this->token);
+            }
+            catch (InvalidArgumentException $e) {
+                $this->log($e->getMessage());
+            }
+            catch (RuntimeException $e) {
+                $this->log($e->getMessage());
+            }
 
-            $this->token_info["kid"]  = $token->getHeader("kid");
+            if (isset($token)) {
+                $this->token_info["kid"]  = $token->getHeader("kid");
+                $this->token_type = "jwt";
+                $this->jwt_token = $token;
 
-            $this->jwt_token = $token;
-
-            // $this->token_info["kid"] = $this->token;
+                // $this->token_info["kid"] = $this->token;
+            }
+            else {
+                $this->token_info["kid"] = $this->token;
+            }
         }
         else if ($this->token_type == "Basic" ) {
             $this->token_type = null; // we need to find out about the token type
@@ -522,7 +546,8 @@ class TokenValidator extends EduIDValidator {
             //$this->log('access_key: ' . $this->token_info["access_key"] );
         }
     }
-   
+
+    // TODO MOVE TO TOKEN MANAGER
     private function findToken() {
         $aDBFields = array(
             "kid", "access_key", "mac_key", "mac_algorithm",
