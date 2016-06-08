@@ -25,35 +25,66 @@ class ServiceManager extends DBManager{
             "token"           => "TEXT",
             "info"            => "TEXT"
         );
-        
+
         $this->service = array();
     }
 
     public function setOptions($options) {}
-    
+
     public function getUUID() {
         if (array_key_exists("service_uuid", $this->service)) {
             return $this->service["service_uuid"];
         }
         return null;
     }
-    
+
     public function hasUUID() {
-        if (!(is_array($this->service) && 
+        if (!(is_array($this->service) &&
               array_key_exists("service_uuid", $this->service) &&
               !empty($this->service["service_uuid"]))) {
-            
+
             return false;
         }
         return true;
     }
 
+    public function addService($serviceDef) {
+        $aFields = array("service_uuid", "name", "mainurl", "token_endpoint", "rsdurl", "token");
+
+        $atypes = array("TEXT", "TEXT", "TEXT", "TEXT", "TEXT", "TEXT");
+        $values = array();
+
+        foreach ($aFields as $f) {
+            if (array_key_exists($f, $serviceDef) && !empty($serviceDef[$f])) {
+                $values[] = $serviceDef[$f];
+            }
+            else {
+                $this->log("missing data field");
+                return false;
+            }
+        }
+
+        $sqlstr = "INSERT INTO services (" . implode(",", $aFields) . ") VALUES (?,?,?,?,?,?)";
+
+        $retval = true;
+        $sth = $this->db->prepare($sqlstr, $aTypes);
+        $res = $sth->execute($values);
+
+        if(PEAR::isError($res)) {
+            $this->log($res->getMessage());
+            $retval = false;
+        }
+
+        $sth->free();
+        return $retval;
+    }
+
     public function findUserServices($user_id) {
         $sqlstr = "SELECT service_uuid, name, mainurl, token_endpoint, info from services s, serviceusers su where su.service_uuid = s.service_uuid and su.user_uuid = ?";
-    
+
         $retval = array();
         if (isset($user_id) && !empty($user_id)) {
-    
+
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
             $res = $sth->execute(array($user_id));
 
@@ -84,31 +115,31 @@ class ServiceManager extends DBManager{
             }
             $sth->free();
         }
-            
+
         return $retval;
     }
 
     /**
      * find service by service id
-     * 
+     *
      * @public function findServiceById($id)
      *
      * @param string $id : the uuid of the requested service.
-     * @return bool : true - id has been found, otherwise not. 
+     * @return bool : true - id has been found, otherwise not.
      */
     public function findServiceById($service_id) {
         if (isset($service_id) && !empty($service_id)) {
             return $this->findService(array("service_uuid" => $service_id));
         }
     }
-    
+
     /**
      * find service by service URL
-     * 
+     *
      * @public function findServiceByURI($id)
      *
      * @param string $uri : the uri of the requested service.
-     * @return bool : true - id has been found, otherwise not. 
+     * @return bool : true - id has been found, otherwise not.
      *
      * The function checks if the provided endpoint is either the main service URL
      * or a token endpoint. In both cases the service will get loaded.
@@ -169,12 +200,12 @@ class ServiceManager extends DBManager{
 
                 $sth->free();
             }
-        
+
             if (isset($this->service)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 

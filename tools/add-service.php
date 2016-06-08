@@ -84,12 +84,12 @@ function verify_service($servicehome) {
                             }
                             $tokenendpoint .= "/$apilink/$tokenservice";
 
-                            // the serviceInfo is stored in the federation                
+                            // the serviceInfo is stored in the federation
                             return array("service_uuid" => generate_uuid(),
-                                                 "name" => $servicename,
-                                                 "mainurl" => $servicehome,
-                                                 "idurl" => $tokenendpoint,
-                                                 "rsdurl" => $s->getLastUri());
+                                         "name" => $servicename,
+                                         "mainurl" => $servicehome,
+                                         "idurl" => $tokenendpoint,
+                                         "rsdurl" => $s->getLastUri());
                         }
 
                         break; // end for loop.
@@ -113,12 +113,12 @@ function authenticate_user($curl) {
     $password = readline("password");
 
     if (!empty($username) && !empty($password)) {
-        $data = array("grant_type" => "password", 
-                      "username"   => $username, 
+        $data = array("grant_type" => "password",
+                      "username"   => $username,
                       "password"   => $password);
 
         $curl->post(json_encode($data), "application/json");
-        
+
         if ($curl->getStatus() == 200) {
             $curl->setMacToken(json_decode($curl->getBody(), true));
         }
@@ -132,13 +132,13 @@ function read_client_token($curl) {
         fclose($file);
 
         if ($clToken) {
-            $curl->setMacToken(json_decode($clToken, true));        
+            $curl->setMacToken(json_decode($clToken, true));
         }
     }
 }
 
 function register_client($curl) {
-    
+
     // CLIENT INFORMATION
     $appID = "ch.htwchur.eduid.cli";
     $appMacKey= "";
@@ -149,28 +149,28 @@ function register_client($curl) {
     $client_name = gethostname();
 
     $jwt = new JWT\Builder();
-    
+
     $jwt->setIssuer($appID);
     $jwt->setAudience("$idHost/$tPath");
     $jwt->setHeader("kid", $appKID);
     $jwt->setSubject($client_id);
     $jwt->set("name", $client_name);
-    
+
     $cn = 'Lcobucci\JWT\Signer\Hmac\Sha256';
     $signer = new $cn;
     $jwt->sign($signer,
                $appMacKey);
 
     $t = $jwt->getToken();
-    
+
     $curl->setHeader(array("Authorization"=> "Bearer $t"));
     $data = array("grant_type" => "client_credentials");
     $curl->post(json_encode($data), "application/json");
-    
+
     if ($curl->getStatus() == 200) {
         // store the body in our config file
         $tokenfile = fopen("$cfgdir/client.json", "w");
-        
+
         if ($tokenfile) {
             fwrite($tokenfile, $curl->getBody());
             fclose($tokenfile);

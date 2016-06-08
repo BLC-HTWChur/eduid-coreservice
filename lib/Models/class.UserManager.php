@@ -56,9 +56,9 @@ class UserManager extends DBManager {
 
     public function authenticate( $password ) {
         if (isset($this->user) && !empty($this->user)) {
-            
+
             $pwd = sha1($this->user["salt"] . $password);
-            
+
             if ($pwd == $this->user["user_passwd"] ) {
                 return true;
             }
@@ -114,6 +114,22 @@ class UserManager extends DBManager {
             $this->loadProfileIdentities();
         }
         return $this->profile;
+    }
+
+    public function isFederationUser() {
+        $retval = false;
+        if (isset($this->user) && !empty($this->user)) {
+            $sqlstr = "select user_uuid from federation_users where user_uuid = ?";
+            $sth = $this->db->prepare($sqlstr, array("TEXT"));
+            $res = $sth->execute(array($this->user["user_uuid"]));
+
+            if($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
+                // is a federation user if we find 1 row
+                $retval = true;
+            }
+            $sth->free();
+        }
+        return $retval;
     }
 }
 

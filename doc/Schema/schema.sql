@@ -76,3 +76,7 @@ create table if not exists serviceusers (
     user_uuid varchar(255) not null,
     last_access integer
 );
+
+create table if not exists federation_users {
+    user_uuid varchar(255) not null
+}

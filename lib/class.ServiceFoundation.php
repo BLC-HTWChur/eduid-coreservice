@@ -46,6 +46,10 @@ class ServiceFoundation extends \RESTling\Service {
         $this->configuration = $aCfg;
     }
 
+    public function getTokenUser() {
+        return $this->tokenValidator->getTokenUser();
+    }
+
     protected function getConfiguration($key) {
 
         if (isset($this->configuration) &&
