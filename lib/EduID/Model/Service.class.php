@@ -4,11 +4,11 @@
  *
  * *********************************************************************** */
 
-require_once("Models/class.DBManager.php");
+namespace EduID\Model;
 
 use Lcobucci\JWT\Signer as Signer;
 
-class ServiceManager extends DBManager{
+class Service extends DBManager{
     protected $service;
 
     public function __construct($db, $options=array()) {
@@ -49,7 +49,7 @@ class ServiceManager extends DBManager{
     }
 
     public function addService($serviceDef) {
-        $aFields = array("service_uuid", "name", "mainurl", "token_endpoint", "rsdurl", "token");
+        $aFields = array_keys($this->dbKeys);
 
         $atypes = array("TEXT", "TEXT", "TEXT", "TEXT", "TEXT", "TEXT");
         $values = array();

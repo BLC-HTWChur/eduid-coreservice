@@ -3,6 +3,8 @@
  *
  * *********************************************************************** */
 
+namespace EduID\Model;
+
 class DBManager extends \RESTling\Logger {
     protected $db;
 

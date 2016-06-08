@@ -2,11 +2,14 @@
 /* *********************************************************************** *
  *
  * *********************************************************************** */
+namespace EduID\Service;
+
+use EduID\ServiceFoundation;
 
 /**
  *
  */
-class ProtocolDiscoveryService extends ServiceFoundation {
+class ProtocolDiscovery extends ServiceFoundation {
 
  protected function get() {
         $this->data = array("status"=> "OK",

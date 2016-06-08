@@ -9,6 +9,8 @@
  * in a later version.
  * *********************************************************************** */
 
+namespace EduID\Service;
+
 class ErrorService extends \RESTling\Logger {
     public function __construct($msg) {
         $this->mark("Start Error Service");

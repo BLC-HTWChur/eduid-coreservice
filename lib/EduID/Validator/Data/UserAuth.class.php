@@ -3,12 +3,14 @@
  *
  * *********************************************************************** */
 
-class UserAuthDataValidator extends EduIDValidator {
+namespace EduID\Validator\Data;
+
+use EduID\Validator\Base as Validator;
+
+class UserAuth extends Validator {
     private $user;
 
     protected function validate() {
-        $this->valid = 0;
-
         if (isset($this->data) && !empty($this->data)) {
             if (in_array($this->method, $this->requireEmptyMethod)) {
                 $this->log("Not Data Must Be Sent For " . $this->method);
@@ -59,7 +61,6 @@ class UserAuthDataValidator extends EduIDValidator {
             return false;
         }
 
-        $this->valid = 1;
         return true;
     }
 

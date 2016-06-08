@@ -3,12 +3,12 @@
  *
  * *********************************************************************** */
 
-require_once("Models/class.EduIDValidator.php");
+namespace EduID\Validator\Data;
 
-use Lcobucci\JWT as JWT;
-use Lcobucci\JWT\Signer as Signer;
+use EduID\Validator\Base as Validator;
+use EduID\Model\Token as TokenModel;
 
-class TokenValidator extends EduIDValidator {
+class Token extends Validator {
 
     private $token;
     private $token_type;  // oauth specific
@@ -23,18 +23,17 @@ class TokenValidator extends EduIDValidator {
     private $accept_type = array();
     private $accept_list = array();
 
+    private $model;
+
     public function __construct($db) {
         parent::__construct($db);
+
+        $this->model = new TokenModel($service->getDataBase());
 
         // header level
         $this->accept_list = array("Bearer",
                                    "MAC",
                                    "Basic");
-        // token level
-        $this->accept_type = array("Bearer",
-                                   "MAC",
-                                   "Grant",
-                                   "Client");
 
         // check for the authorization header
         $headers = getallheaders();
@@ -56,33 +55,26 @@ class TokenValidator extends EduIDValidator {
         }
     }
 
+    // get new token issuer based on the current token
     public function getTokenIssuer($type) {
-        require_once("Models/class.TokenManager.php");
-
-        $tm = new TokenManager($this->db, array("type"=> $type));
-        $tm->setRootToken($this->token_data);
-
-        return $tm;
+        return $this->model->getIssuer($type);
     }
 
-    public function getTokenManager($type) {
-        return $this->getTokenIssuer($type);
+    // get the token issuer for the current token
+    public function getTokenModel() {
+        return $this->model;
     }
 
     public function getTokenUser() {
-        if (isset($this->token_data) &&
-            !empty($this->token_data) &&
-            !empty($this->token_data["user_uuid"])) {
+        return $this->model->getUser();
+    }
 
-            require_once("Models/class.UserManager.php");
+    public function getToken() {
+        return $this->model->getToken();
+    }
 
-            $um = new UserManager($this->db);
-            if ($um->findByUUID($this->token_data["user_uuid"])) {
-                return $um;
-            }
-        }
-
-        return null;
+    public function getJWT() {
+        return $this->jwt_token;
     }
 
     public function ignoreTokenTypes($typeList) {
@@ -149,14 +141,6 @@ class TokenValidator extends EduIDValidator {
         if (!in_array("client_id", $this->requireUUID)) {
             $this->requireUUID[] = "client_id";
         }
-    }
-
-    public function getToken() {
-        return $this->token_data;
-    }
-
-    public function getJWT() {
-        return $this->jwt_token;
     }
 
     public function verifyRawToken($rawtoken) {
@@ -252,7 +236,7 @@ class TokenValidator extends EduIDValidator {
             $this->token_data["expires"] < time()) {
 
             // consume token
-            $this->consumeToken();
+            $this->model->consumeToken();
             $this->log("token expired - consume it!");
             return false;
         }
@@ -269,21 +253,16 @@ class TokenValidator extends EduIDValidator {
 
         // at this point we have to increase the sequence
         if ($this->token_data["seq_nr"] > 0) {
-            $this->sequenceStep();
+            $this->model->sequenceStep();
         }
 
         // this logic should be part of token manager
-        if (isset($this->token_data) &&
-            !empty($this->token_data)) {
 
-            foreach ($this->requireUUID as $id) {
-                if (array_key_exists($id, $this->token_data) &&
-                    empty($this->token_data[$id])) {
-                    $this->log("required data field is missing");
-                    return false;
-                }
+        foreach ($this->requireUUID as $id) {
+            if(!$this->model->hasTokenValue($id)) {
+                $this->log("required referece is missing")
+                return false;
             }
-
         }
 
         return true;
@@ -305,7 +284,7 @@ class TokenValidator extends EduIDValidator {
         }
 
         // enforce algorithm
-        if ($this->token_data["mac_algorithm"] != $alg) {
+        if (!$this->model->checkTokenValue("mac_algorithm", $alg)) {
 
             $this->log("invalid jwt sign method presented");
             $this->log("expected: '" . $this->token_data["mac_algorithm"] ."'");
@@ -313,7 +292,7 @@ class TokenValidator extends EduIDValidator {
             return false;
         }
 
-        $signer = $this->getSigner($alg);
+        $signer = $this->model->getSigner();
 
         if (!isset($signer)) {
             $this->log("no jwt signer found for " . $alg);
@@ -360,8 +339,7 @@ class TokenValidator extends EduIDValidator {
         }
 
         // verify implicit sequence, don't allow resuing the time
-        if (isset($this->token_data["last_access"]) &&
-            $this->token_data["last_access"] > 0 &&
+        if ($this->model->hasTokenValue("last_access") &&
             $this->token_info["ts"] <= $this->token_data["last_access"]) {
 
             $this->log("new request is older that previous one");
@@ -369,23 +347,23 @@ class TokenValidator extends EduIDValidator {
             return false;
         }
 
-        $this->updateLastAccess();
+        $this->model->updateAccess();
 
-        if ($this->token_data["seq_nr"] > 0 &&
+        if ($this->model->hasTokenValue("seq_nr") &&
             (!isset($this->token_info["seq_nr"]) ||
             empty($this->token_info["seq_nr"]))) {
 
             // no sequence provided
             $this->log("missing seq_nr but requested");
 
-            $this->consumeToken();
+            $this->model->consumeToken();
             return false;
         }
 
-        if ($this->token_data["seq_nr"] > 0 &&
-            $this->token_info["seq_nr"] != $this->token_data["seq_nr"]) {
+        if (!$this->manaer->checkTokenValue("seq_nr",
+                                            $this->token_info["seq_nr"])) {
             // out of bounds
-            $this->consumeToken();
+            $this->model->consumeToken();
             $this->log("token sequence out of bounds");
 
             return false;
@@ -405,7 +383,7 @@ class TokenValidator extends EduIDValidator {
 
         // at this point we have to increase the sequence
         if ($this->token_data["seq_nr"] > 0) {
-            $this->sequenceStep();
+            $this->model->sequenceStep();
             // $this->log("seq step");
         }
 
@@ -448,7 +426,7 @@ class TokenValidator extends EduIDValidator {
         }
 
         // NOTE: MAC appear to be replaced by JWTs. But we use the same algorithm
-        $signer = $this->getSigner($this->token_data["mac_algorithm"]);
+        $signer = $this->model->getSigner();
 
         if (!$signer->verify(base64_decode($this->token_info["mac"]),
                              $payload,
@@ -462,34 +440,6 @@ class TokenValidator extends EduIDValidator {
         }
 
         return true;
-    }
-
-    private function getSigner($alg) {
-        $signer = null;
-
-        list($algo, $level) = explode("S", $alg);
-
-        switch ($algo) {
-            case "H": $algo = "Hmac"; break;
-            case "R": $algo = "Rsa"; break;
-            case "E": $algo = "Ecdsa"; break;
-            default: $algo = ""; break;
-        }
-        switch ($level) {
-            case "256":
-            case "384":
-            case "512":
-                break;
-            default: $level = ""; break;
-        }
-
-        if (!empty($algo) && !empty($level)) {
-            // NOTE: for dynamic namespaced classes the fully qualified name is needed.
-            $signerClass = "Lcobucci\\JWT\\Signer\\" . $algo . "\\Sha" . $level ;
-            $signer = new $signerClass();
-        }
-
-        return $signer;
     }
 
     private function extractToken() {
@@ -544,121 +494,16 @@ class TokenValidator extends EduIDValidator {
         }
     }
 
-    // TODO MOVE TO TOKEN MANAGER
     private function findToken() {
-        $aDBFields = array(
-            "kid", "access_key", "mac_key", "mac_algorithm",
-            "seq_nr", "expires", "consumed", "max_seq",
-            "user_uuid", "service_uuid", "client_id", "token_type", "extra",
-            "last_access"
-        );
+        if ($this->model->findToken($this->token_info["kid"])) {
 
-        $sqlstr = "select " . implode(", ", $aDBFields). " from tokens where kid = ? and consumed = 0";
+            $this->token_data = $this->model->next();
 
-        $aTypes = array("TEXT");
-        $aValues = array($this->token_info["kid"]);
-
-        if (isset($this->token_type) && !empty($this->token_type)) {
-            $sqlstr .= " AND token_type = ?";
-            $aTypes[] = "TEXT";
-            $aValues[] = $this->token_type;
-        }
-
-        // for bearer and session tokens the token_id is the token_key
-        $sth = $this->db->prepare($sqlstr, $aTypes);
-        $res = $sth->execute($aValues);
-
-        if (PEAR::isError($res)) {
-            $this->log($res->getMessage());
-        }
-        else {
-            $this->token_data = null;
-            $this->token_key  = null;
-
-            if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
-                $this->token_data = array();
-
-                foreach ($row as $key => $value) {
-                    if ($key === "extra") {
-                        $this->token_data[$key] = json_decode($value, true);
-                    }
-                    else {
-                        $this->token_data[$key] = $value;
-                    }
-                }
-
+            if ($this->token_data) {
                 $this->token_key = $this->token_data["access_key"];
                 $this->token_type = $this->token_data["token_type"];
             }
-            else {
-                $this->log("no token found for kid " . implode(", ", $aValues));
-            }
-
-            $sth->free();
         }
-    }
-
-    private function consumeToken() {
-        $key = $this->token_key;
-
-        $sqlstr = "update  tokens set consumed = ? where kid = ?";
-        $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
-
-        $now = time();
-
-        $res = $sth->execute(array($now,
-                                   $key));
-
-        if (PEAR::isError($res))
-        {
-            $this->error = $res->getMessage();
-            $this->log($res->getMessage());
-        }
-        $sth->free();
-
-        // consume all children
-        $sqlstr = "update  tokens set consumed = ? where parent_kid = ? and token_type <> 'Refresh'";
-        $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
-        $res = $sth->execute(array($now,
-                                   $key));
-
-        if (PEAR::isError($res))
-        {
-            $this->error = $res->getMessage();
-            $this->log($res->getMessage());
-
-        }
-        $sth->free();
-    }
-
-    private function sequenceStep() {
-        $sqlstr = "update  tokens set seq_nr = ? where kid = ?";
-        $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
-
-        $res = $sth->execute(array($this->token_data["seq_nr"] + 1,
-                                   $this->token_key));
-
-        if (PEAR::isError($res))
-        {
-            $this->error = $res->getMessage();
-            $this->log($res->getMessage());
-        }
-        $sth->free();
-    }
-
-    private function updateLastAccess() {
-        $sqlstr = "update  tokens set last_access = ? where kid = ?";
-        $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
-
-        $res = $sth->execute(array($this->token_info["ts"],
-                                   $this->token_data["kid"]));
-
-        if (PEAR::isError($res))
-        {
-            $this->error = $res->getMessage();
-            $this->log($res->getMessage());
-        }
-        $sth->free();
     }
 }
 

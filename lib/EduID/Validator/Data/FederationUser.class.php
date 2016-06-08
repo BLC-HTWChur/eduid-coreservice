@@ -3,7 +3,11 @@
  *
  * *********************************************************************** */
 
-class FederationUser extends EduIDValidator {
+namespace EduID\Validator\Data;
+
+use EduID\Validator\Base as Validator;
+
+class FederationUser extends Validator {
 
     private $user;
     private $methods = [];

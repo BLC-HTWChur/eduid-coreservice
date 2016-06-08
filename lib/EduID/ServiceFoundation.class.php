@@ -2,11 +2,11 @@
 /*
  *
  */
+namespace EduID;
+
+use EduID\Validator\Header\Token as TokenValidator;
 
 require_once('MDB2.php');
-
-//require_once("Models/class.SessionValidator.php");
-require_once("Models/class.TokenValidator.php");
 
 /**
  *
@@ -92,6 +92,10 @@ class ServiceFoundation extends \RESTling\Service {
                 $this->status = \RESTling\Service::UNINITIALIZED;
             }
         }
+    }
+
+    public function getDataBase() {
+        return $this->db;
     }
 
     private function initSessionValidator() {

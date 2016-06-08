@@ -3,17 +3,25 @@
  *
  * *********************************************************************** */
 
-require_once("Models/class.EduIDValidator.php");
-require_once("Models/class.UserManager.php");
-require_once("Models/class.ServiceManager.php");
-require_once("Models/class.TokenDataValidator.php");
+namespace EduID\Service;
+
+use EduID\ServiceFoundation;
+use EduID\Validator\Data\Token;
+use EduID\Model\User;
+use EduID\Model\Service;
+use EduID\ServiceFoundation;
+//
+//require_once("Models/class.EduIDValidator.php");
+//require_once("Models/class.UserManager.php");
+//require_once("Models/class.ServiceManager.php");
+//require_once("Models/class.TokenDataValidator.php");
 
 use Lcobucci\JWT as JWT;
 
 /**
  *
  */
-class TokenService extends ServiceFoundation {
+class Token extends ServiceFoundation {
     private $userValidator;
     private $serviceManager;
 
@@ -40,18 +48,18 @@ class TokenService extends ServiceFoundation {
     public function getAuthToken() {
         return $this->tokenValidator->getToken();
     }
-    
+
     public function getJWT() {
         return $this->tokenValidator->getJWT();
     }
-    
+
     public function getTargetService() {
         if (!isset($this->serviceManager)) {
             $this->serviceManager = new ServiceManager($this->db);
         }
         return $this->serviceManager;
     }
-    
+
     protected function post_password() { // OAuth2 Section 4.3.2
         $token = $this->getAuthToken();
         $tokenType = "MAC";
@@ -81,10 +89,10 @@ class TokenService extends ServiceFoundation {
             $this->forbidden();
         }
     }
-    
+
     protected function post_client_credentials() {
         $token = $this->getAuthToken();
-        
+
         // transpose token claims
         $jwt = $this->getJWT();
         $this->inputData["device_name"] = $jwt->getClaim("name");
@@ -97,7 +105,7 @@ class TokenService extends ServiceFoundation {
         $clientToken = $this->tokenValidator->getToken();
 
         $this->log(json_encode($this->inputData));
-        
+
         $token_extra = array("client_type" => $clientToken["client_id"],
                              "device_name" => $this->inputData["device_name"]);
 
@@ -119,7 +127,7 @@ class TokenService extends ServiceFoundation {
             $this->data["expires_in"] = $token["expires_in"];
         }
     }
-    
+
     protected function post_authorization_code() {
         // service needs to be validated by tokendata validator
 
@@ -129,7 +137,7 @@ class TokenService extends ServiceFoundation {
         $tm = $this->tokenValidator->getTokenIssuer($tokenType);
 
         $user = $this->tokenValidator->getTokenUser();
-        
+
         $user->loadProfileIdentities();
         $profiles = $user->getAllProfiles();
         $profile  = $profiles[0]["extra"];
@@ -140,7 +148,7 @@ class TokenService extends ServiceFoundation {
         $tm->addToken(array("service_uuid"=>$this->serviceManager->getUUID()));
 
         $token = $tm->getToken();
-        
+
         $jwt = new JWT\Builder();
 
         $jwt->setIssuer('https://eduid.htwchur.ch');
@@ -153,7 +161,7 @@ class TokenService extends ServiceFoundation {
         $jwt->setSubject($profiles[0]["userid"]); // eduid ID
 
         $this->log($token["extra"]);
-        
+
         $jwt->set("azp", $token["extra"]["client_type"]);
 
         foreach (array("name", "given_name", "family_name", "email") as $k) {

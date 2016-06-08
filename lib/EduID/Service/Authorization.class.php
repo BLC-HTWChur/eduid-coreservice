@@ -3,9 +3,15 @@
  *
  * *********************************************************************** */
 
-require_once("Models/class.EduIDValidator.php");
-require_once("Models/class.UserManager.php");
-require_once("Models/class.UserAuthDataValidator.php");
+namespace EduID\Service;
+
+use EduID\ServiceFoundation;
+use EduID\Validator\Data\UserAuth;
+use EduID\Model\User;
+//
+//require_once("Models/class.EduIDValidator.php");
+//require_once("Models/class.UserManager.php");
+//require_once("Models/class.UserAuthDataValidator.php");
 
 use Lcobucci\JWT as JWT;
 use Lcobucci\JWT\Signer as Signer;

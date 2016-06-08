@@ -10,17 +10,10 @@ set_include_path("./lib" . PATH_SEPARATOR .
                 get_include_path());
 
 // load RESTling
-include_once('RESTling/contrib/Restling.auto.php');
-include_once('eduid.autoloader.php');
 
-// preload the service foundation, so the services don't have to.
-require_once('class.ServiceFoundation.php');
-
-// preload the error service
-require_once('Service/class.ErrorService.php');
+include_once('eduid.auto.php');
 
 if(array_key_exists("PATH_INFO", $_SERVER)) {
-
     $pi = explode("/", $_SERVER["PATH_INFO"]);
     array_shift($pi);
     $serviceName = array_shift($pi);
@@ -30,26 +23,22 @@ if (isset($serviceName) && !empty($serviceName)) {
 
     $serviceName = trim($serviceName);
     $ts = explode("-", $serviceName);
-    $serviceName = "";
+    $serviceName = "EduID\\Service\\";
 
     foreach ($ts as $v) {
-        $serviceName .= ucfirst($v);
+        $serviceName .= ucfirst(strtolower($v));
     }
 
-    $serviceName .= "Service";
-
     try {
-        require_once('Service/class.' . $serviceName . '.php');
-
         $service = new $serviceName();
     }
     catch (\Exception $e) {
-        $service = new ErrorService($e->getMessage());
+        $service = new EduID\Service\Error($e->getMessage());
     }
 }
 
 if (!isset($service)) {
-    $service = new ErrorService("no service set");
+    $service = new EduID\Service\Error("no service set");
 }
 
 $service->run();

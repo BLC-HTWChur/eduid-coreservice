@@ -3,7 +3,12 @@
  *
  * *********************************************************************** */
 
-class UserProfileService extends ServiceFoundation {
+
+namespace EduID\Service;
+
+use EduID\ServiceFoundation;
+
+class UserProfile extends ServiceFoundation {
     protected function initializeRun() {
         $this->tokenValidator->resetAcceptedTokens(array("Bearer", "MAC"));
         $this->tokenValidator->setAcceptedTokenTypes(array("Bearer", "MAC"));

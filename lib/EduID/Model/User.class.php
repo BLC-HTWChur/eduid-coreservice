@@ -3,9 +3,9 @@
  *
  * *********************************************************************** */
 
-require_once("Models/class.DBManager.php");
+namespace EduID\Model;
 
-class UserManager extends DBManager {
+class User extends DBManager {
     private $user;
     private $profile;
 

@@ -2,19 +2,18 @@
 /* *********************************************************************** *
  *
  * *********************************************************************** */
+namespace EduID\Service;
 
-
-require_once("Models/class.EduIDValidator.php");
-require_once("Models/class.UserManager.php");
-require_once("Models/class.ServiceManager.php");
-require_once("Validator/class.FederationUser.php");
+use EduID\ServiceFoundation;
+use EduID\Validator\Data\FederationUser;
+use EduID\Model\Service as ServiceModel;
 
 /**
  *
  */
-class ServicesService extends ServiceFoundation {
+class Service extends ServiceFoundation {
 
-    private $serviceManager;
+    private $serviceModel;
 
     public function __construct() {
         parent::__construct();
@@ -25,7 +24,7 @@ class ServicesService extends ServiceFoundation {
         $fu->setOperations(array("get_federation", "post_federation"));
         $this->addHeaderValidator($fu);
 
-        $this->serviceManager = new ServiceManager($this->db);
+        $this->serviceModel = new ServiceModel($this->db);
     }
 
     /**
@@ -34,7 +33,7 @@ class ServicesService extends ServiceFoundation {
     protected function get() {
         $t = $this->tokenValidator->getToken();
 
-        $this->data = $this->serviceManager->findUserServices($t["user_uuid"]);
+        $this->data = $this->serviceModel->findUserServices($t["user_uuid"]);
     }
 
     /**
@@ -55,7 +54,7 @@ class ServicesService extends ServiceFoundation {
 
         $this->inputData["token"] = $tm->newToken();
 
-        $this->serviceManager->addService($this->inputData);
+        $this->serviceModel->addService($this->inputData);
 
         $this->data = $this->inputData["token"];
 

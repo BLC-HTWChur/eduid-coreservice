@@ -3,9 +3,10 @@
  *
  * *********************************************************************** */
 
-class EduIDValidator extends \RESTling\Validator {
+namespace EduID\Validator;
+
+class Base extends \RESTling\Validator {
     protected $db;
-    protected $valid = false;
 
     protected $id_type;     // service, client, user
     protected $uuid;        // respective uuid
@@ -14,7 +15,7 @@ class EduIDValidator extends \RESTling\Validator {
     protected $requireEmptyMethod = array();
 
     public function __construct($db) {
-        $this->db = $db;
+        $this->db = db;
     }
 
     public function allowEmpty($methodList) {
@@ -39,9 +40,9 @@ class EduIDValidator extends \RESTling\Validator {
             }
         }
     }
-    
+
     protected function checkDataForMethod() {
-        if (isset($this->data) && 
+        if (isset($this->data) &&
             !empty($this->data)) {
             if (in_array($this->method, $this->requireEmptyMethod)) {
                 $this->log("No Data Must Be Sent For " . $this->method);
@@ -52,10 +53,10 @@ class EduIDValidator extends \RESTling\Validator {
             $this->log("Data missing for  " . $this->method);
             return false;
         }
-                
+
         return true;
     }
-    
+
     protected function checkAuthToken() {
         // verify that there is a client token
         $gT = $this->service->getAuthToken();
@@ -66,20 +67,20 @@ class EduIDValidator extends \RESTling\Validator {
         }
         return true;
     }
-    
+
     /**
      * Check if data fields as present and not empty
-     * 
+     *
      * @protected function checkDataFields($fieldList)
      *
      * @param array $fieldList - list of expected non empty fields
-     * 
+     *
      * @returns bool - false if any presented field is missing or empty.
      */
     protected function checkDataFields($fieldList) {
-        if(isset($fieldList) && 
+        if(isset($fieldList) &&
            !empty($fieldList)) {
-        
+
             foreach ($fieldList as $k) {
                 if (!array_key_exists($k, $this->data) ||
                     empty($this->data[$k])) {
@@ -88,10 +89,10 @@ class EduIDValidator extends \RESTling\Validator {
                 }
             }
         }
-        
+
         return true;
     }
-    
+
 }
 
 ?>
