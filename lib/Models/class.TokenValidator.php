@@ -184,8 +184,6 @@ class TokenValidator extends EduIDValidator {
     }
 
     protected function validate() {
-        $this->valid = false;
-
         if (!isset($this->token_type) ||
             empty($this->token_type)) {
 
@@ -288,7 +286,6 @@ class TokenValidator extends EduIDValidator {
 
         }
 
-        $this->valid = true;
         return true;
     }
 
