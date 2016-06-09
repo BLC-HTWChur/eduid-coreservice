@@ -8,14 +8,10 @@ spl_autoload_register(function ($class) {
 
     if (isset($root) && !empty($root)) {
         $cpath = array();
-        if ($root == "EduID") {
-            $cpath[] = $root . "/" . implode("/", $parts) . ".class.php";
-        }
-        else {
-            $cpath[] = $root . "/classes/" . . implode("/", $parts) . ".class.php";
-            $root = array_shift($parts);
-            $cpath[] = strtolower($root) . "/src/" . . implode("/", $parts) . ".class.php";
-        }
+        $cpath[] = $root . "/" . implode("/", $parts) . ".class.php";
+        $cpath[] = $root . "/classes/" . . implode("/", $parts) . ".class.php";
+        $root = array_shift($parts);
+        $cpath[] = strtolower($root) . "/src/" . . implode("/", $parts) . ".class.php";
 
         $prefixes = explode(PATH_SEPARATOR, get_include_path());
 
