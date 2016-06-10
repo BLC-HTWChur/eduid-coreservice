@@ -67,8 +67,13 @@ create table if not exists services (
 
 create table if not exists serviceprotocols (
     service_uuid varchar(255) not null,
-    name varchar(255) not null,
-    rsd TEXT not null
+    rsd TEXT not null,
+    last_update INTEGER DEFAULT 0
+);
+
+create table if not exists protocolnames (
+    service_uuid varchar(255) not null,
+    rsd_name varchar(255) not null
 );
 
 create table if not exists serviceusers (

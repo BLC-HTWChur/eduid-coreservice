@@ -5,15 +5,35 @@
 namespace EduID\Service;
 
 use EduID\ServiceFoundation;
+use EduID\Model\Protocol;
 
 /**
  *
  */
 class ProtocolDiscovery extends ServiceFoundation {
 
- protected function get() {
-        $this->data = array("status"=> "OK",
-                            "message"=>"POST user information");
+    private $model;
+
+    protected function initializeRun() {
+        $this->model = new Protocol($this->db);
+    }
+
+    /**
+     * request services for a list of services
+     * - include all services in the list
+     */
+    protected function post_service() {
+        // only service mainurls are accepted
+        $this->data = $this->model->findRSDWithServiceUrlList($this->inputData);
+    }
+
+    /**
+     * request services for a list of protocols
+     * - include service that match all listed protocols
+     */
+    protected function post_potocol() {
+        // expect a list of protocol names
+        $this->data = $this->model->findRSDWithProtocolList($this->inputData);
     }
 }
 ?>
