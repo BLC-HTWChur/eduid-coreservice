@@ -9,8 +9,7 @@
 set_include_path("./lib" . PATH_SEPARATOR .
                 get_include_path());
 
-// load RESTling
-
+// include autoloader
 include_once('eduid.auto.php');
 
 if(array_key_exists("PATH_INFO", $_SERVER)) {
@@ -25,9 +24,7 @@ if (isset($serviceName) && !empty($serviceName)) {
     $ts = explode("-", $serviceName);
     $serviceName = "EduID\\Service\\";
 
-    foreach ($ts as $v) {
-        $serviceName .= ucfirst(strtolower($v));
-    }
+    serviceName .= implode("", array_map(function($v) {return ucfirst(strtolower($v));}, $ts));
 
     try {
         $service = new $serviceName();
