@@ -67,6 +67,7 @@ class Token extends DBManager{
             if (array_key_exists("mac_algorithm", $options) &&
                 in_array($options["mac_algorithm"], $aAlg)) {
 
+                // if we get an old MAC name, transpose to the new JWA name
                 if ($options["mac_algorithm"] == "hmac-sha-256") {
 
                     $options["mac_algorithm"] = "HS256";

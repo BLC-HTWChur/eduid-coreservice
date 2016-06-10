@@ -18,6 +18,12 @@ class Base extends \RESTling\Validator {
         $this->db = db;
     }
 
+    /**
+     * allowEmpty() and requireEmtpy() are almost like RESTling\Validator::ignoreOperation
+     * with the exception that for data validators these functions will test if the
+     * service data is set (or not). It will avoid validation if the minimal data
+     * requirements are not met, otherwise the validation will proceed as usual.
+     */
     public function allowEmpty($methodList) {
         if (isset($methodList)) {
             if (!is_array($methodList)) {

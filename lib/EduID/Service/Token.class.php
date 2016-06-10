@@ -173,7 +173,8 @@ class Token extends ServiceFoundation {
 
         $this->data = array(
             "access_token" => (string) $jwt->getToken(),
-            "token_type"   => "urn:ietf:oauth:param:jwt-bearer"
+            "token_type"   => "urn:ietf:oauth:param:jwt-bearer",
+            "redirect_uri" => $this->serviceManager->getTokenEndpoint()
         );
     }
 }
