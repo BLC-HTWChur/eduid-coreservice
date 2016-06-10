@@ -6,6 +6,7 @@ create table if not exists tokens (
     mac_algorithm varchar(10),                      -- only hmac-sha-1 or hmac-sha-256
     seq_nr INTEGER DEFAULT 1,                       -- 0 if no sequence is used
 
+    issued_at INTEGER,
     expires INTEGER DEFAULT 0,
     consumed INTEGER DEFAULT 0,
     max_seq INTEGER DEFAULT 0,

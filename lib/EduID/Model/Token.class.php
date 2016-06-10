@@ -39,6 +39,7 @@ class Token extends DBManager{
             "extra"         => "TEXT",
             "scope"         => "TEXT",
             "seq_nr"        => "INTEGER",
+            "issued_at"     => "INTEGER",
             "expires"       => "INTEGER",
             "consumed"      => "INTEGER",
             "max_seq"       => "INTEGER",
@@ -346,6 +347,8 @@ class Token extends DBManager{
                     }
                 }
             }
+
+            $newToken["issued_at"] = time();
 
             // store the data into the database
             $aNames = array();

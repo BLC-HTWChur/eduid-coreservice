@@ -155,8 +155,8 @@ class Token extends ServiceFoundation {
 
         $jwt->setAudience($this->serviceManager->getTokenEndpoint()); // the client MUST sent the endpoint
         $jwt->setId($token["kid"]);
-        $jwt->setIssuedAt(time());
-        $jwt->setExpiration(time() + 3600); //1h valid - FIXME make configurable
+        $jwt->setIssuedAt($token["issued_at"]);
+        $jwt->setExpiration($token["issued_at"] + 3600); //1h valid - FIXME make configurable
 
         $jwt->setSubject($profiles[0]["userid"]); // eduid ID
 
@@ -176,6 +176,16 @@ class Token extends ServiceFoundation {
             "token_type"   => "urn:ietf:oauth:param:jwt-bearer",
             "redirect_uri" => $this->serviceManager->getTokenEndpoint()
         );
+    }
+
+    protected function post_validate() {
+        $t = $this->dataValidator->getToken();
+
+        $this->data["sub"]    = $t["client_id"];
+        $this->data["azp"]    = $t["extra"]["client_type"];
+        $this->data["iat"]    = $t["issued_at"];
+        $this->data["email"]  = $t["email"];
+
     }
 }
 
