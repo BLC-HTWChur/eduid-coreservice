@@ -29,6 +29,21 @@ class ServiceDiscovery extends ServiceFoundation {
     }
 
     /**
+     * find services based on their URL
+     */
+    protected function post() {
+        $data = $this->serviceModel->findServiceByURL($this->data["url"]);
+        if (!$data) {
+            $this->not_found();
+        }
+
+        $this->data["link"] = $data["mainurl"];
+        $this->data["token_endpoint"] = $data["token_endpoint"];
+        $this->data["info"] = $data["info"];
+        $this->data["name"] = $data["name"];
+    }
+
+    /**
      * get user services
      */
     protected function get_user() {

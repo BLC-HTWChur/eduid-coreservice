@@ -51,14 +51,17 @@ class Service extends DBManager{
     public function addService($serviceDef) {
         $aFields = array_keys($this->dbKeys);
 
-        $atypes = array("TEXT", "TEXT", "TEXT", "TEXT", "TEXT", "TEXT");
+        $atypes = array();
         $values = array();
 
         foreach ($aFields as $f) {
-            if (array_key_exists($f, $serviceDef) && !empty($serviceDef[$f])) {
+            if (array_key_exists($f, $serviceDef) &&
+                !empty($serviceDef[$f])) {
+
                 $values[] = $serviceDef[$f];
+                $atypes[] = "TEXT";
             }
-            else {
+            else if ($f != "info") {
                 $this->log("missing data field");
                 return false;
             }
@@ -80,7 +83,7 @@ class Service extends DBManager{
     }
 
     public function findUserServices($user_id) {
-        $sqlstr = "SELECT service_uuid, name, mainurl, token_endpoint, info from services s, serviceusers su where su.service_uuid = s.service_uuid and su.user_uuid = ?";
+        $sqlstr = "SELECT name, mainurl, token_endpoint, info from services s, serviceusers su where su.service_uuid = s.service_uuid and su.user_uuid = ?";
 
         $retval = array();
         if (isset($user_id) && !empty($user_id)) {
@@ -180,10 +183,12 @@ class Service extends DBManager{
                         $this->dbKeys[$k] == "TEXT") {
 
                         $op = $k . ' LIKE ?'
-                        if ($options["like"] == "left" || $options["like"] == "both") {
+                        if ($options["like"] == "left" ||
+                            $options["like"] == "both") {
                             $lk = $lk . "%";
                         }
-                        if ($options["like"] == "left" || $options["like"] == "both") {
+                        if ($options["like"] == "left" ||
+                            $options["like"] == "both") {
                             $lk = "%" . $lk;
                         }
                     }
@@ -195,7 +200,7 @@ class Service extends DBManager{
             if (!empty($filter)) {
                 $sqlstr .= implode(" OR ", $filter);
 
-                $sth = $this->db->prepare($sqlstr, array("TEXT"));
+                $sth = $this->db->prepare($sqlstr, $types);
                 $res = $sth->execute($values);
 
                 if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {

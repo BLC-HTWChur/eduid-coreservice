@@ -25,6 +25,9 @@ class ProtocolDiscovery extends ServiceFoundation {
     protected function post_service() {
         // only service mainurls are accepted
         $this->data = $this->model->findRSDWithServiceUrlList($this->inputData);
+        if (!$this->data) {
+            $this->not_found();
+        }
     }
 
     /**
@@ -34,6 +37,9 @@ class ProtocolDiscovery extends ServiceFoundation {
     protected function post_potocol() {
         // expect a list of protocol names
         $this->data = $this->model->findRSDWithProtocolList($this->inputData);
+        if (!$this->data) {
+            $this->not_found();
+        }
     }
 }
 ?>
