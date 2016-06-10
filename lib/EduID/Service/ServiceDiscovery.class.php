@@ -31,7 +31,7 @@ class ServiceDiscovery extends ServiceFoundation {
     /**
      * get user services
      */
-    protected function get() {
+    protected function get_user() {
         $t = $this->tokenValidator->getToken();
 
         $this->data = $this->serviceModel->findUserServices($t["user_uuid"]);
