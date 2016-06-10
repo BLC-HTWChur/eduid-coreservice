@@ -151,6 +151,18 @@ class Service extends DBManager{
         }
     }
 
+    public function findServiceByName($name) {
+        if (isset($name) && !empty($name)) {
+            return $this->findService(array("name" => $name));
+        }
+    }
+
+    public function findServiceByNamePart($name) {
+        if (isset($name) && !empty($name)) {
+            return $this->findService(array("name" => $name, "like" => "both"));
+        }
+    }
+
     private function findService($options=array()) {
         $this->service = null;
         $sqlstr = "SELECT service_uuid, name, mainurl, token_endpoint, rsdurl, info, token from services where ";
@@ -159,11 +171,25 @@ class Service extends DBManager{
             $filter = array();
             $types  = array();
             $values = array();
-            foreach (array("service_uuid", "mainurl", "token_endpoint") as $k) {
+            foreach (array("service_uuid", "mainurl", "token_endpoint", "rsdurl", "name") as $k) {
                 if (array_key_exists($k, $options)) {
-                    array_push($filter, $k . '= ?');
+                    $lk  = $options[$k];
+                    $op = $k . ' = ?'
+
+                    if (array_key_exists("like", $options) &&
+                        $this->dbKeys[$k] == "TEXT") {
+
+                        $op = $k . ' LIKE ?'
+                        if ($options["like"] == "left" || $options["like"] == "both") {
+                            $lk = $lk . "%";
+                        }
+                        if ($options["like"] == "left" || $options["like"] == "both") {
+                            $lk = "%" . $lk;
+                        }
+                    }
+                    array_push($filter, $op);
                     array_push($types, $this->dbKeys[$k]);
-                    array_push($values, $options[$k]);
+                    array_push($values, $lk);
                 }
             }
             if (!empty($filter)) {

@@ -6,12 +6,13 @@ namespace EduID\Service;
 
 use EduID\ServiceFoundation;
 use EduID\Validator\Data\FederationUser;
+use EduID\Model\Token;
 use EduID\Model\Service as ServiceModel;
 
 /**
  *
  */
-class Service extends ServiceFoundation {
+class ServiceDiscovery extends ServiceFoundation {
 
     private $serviceModel;
 
@@ -50,7 +51,7 @@ class Service extends ServiceFoundation {
      * add a new service to the federation
      */
     protected function put_federation() {
-        $tm = $this->tokenValidator->getTokenManager("MAC");
+        $tm = new Token($this->db, array("type"=>"MAC"));
 
         $this->inputData["token"] = $tm->newToken();
 
