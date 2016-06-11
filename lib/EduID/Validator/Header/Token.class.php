@@ -3,10 +3,14 @@
  *
  * *********************************************************************** */
 
-namespace EduID\Validator\Data;
+namespace EduID\Validator\Header;
 
 use EduID\Validator\Base as Validator;
 use EduID\Model\Token as TokenModel;
+
+use Lcobucci\JWT;
+use Lcobucci\JWT\Parser as TokenParser;
+
 
 class Token extends Validator {
 
@@ -20,15 +24,15 @@ class Token extends Validator {
 
     private $requireUUID = array();
 
-    private $accept_type = array();
-    private $accept_list = array();
+    private $accept_type = array(); // Service level token
+    private $accept_list = array(); // HTTP level Token
 
     private $model;
 
     public function __construct($db) {
         parent::__construct($db);
 
-        $this->model = new TokenModel($service->getDataBase());
+        $this->model = new TokenModel($this->db);
 
         // header level
         $this->accept_list = array("Bearer",
@@ -37,8 +41,6 @@ class Token extends Validator {
 
         // check for the authorization header
         $headers = getallheaders();
-
-        $this->log(json_encode($headers));
 
         if (array_key_exists("Authorization", $headers) &&
             isset($headers["Authorization"]) &&
@@ -173,7 +175,7 @@ class Token extends Validator {
 
             // nothin to validate
             $this->log("no token type available");
-            $this->log(json_encode(getallheaders()));
+            // $this->log(json_encode(getallheaders()));
             return false;
         }
 
@@ -189,7 +191,7 @@ class Token extends Validator {
 
         // make authorization scheme validation more flexible
         if (!method_exists($this, $fname)) {
-            $this->log("authorization method not supported")
+            $this->log("authorization method not supported");
             return false;
         }
 
@@ -227,7 +229,8 @@ class Token extends Validator {
             return false;
         }
 
-        if (!in_array($this->token_type, $this->accept_type)) {
+        if (!empty($this->accept_type) &&
+            !in_array($this->token_type, $this->accept_type)) {
             $this->log("not accepted token type. Given type '" . $this->token_type . "'");
             return false;
         }
@@ -246,21 +249,21 @@ class Token extends Validator {
             return false;
         }
 
-        if (!isset($this->token_info["access_key"])) {
-            $this->log("missing client secret");
-            return false;
-        }
+//        if (!isset($this->token_info["access_key"])) {
+//            $this->log("missing client secret");
+//            return false;
+//        }
 
         // at this point we have to increase the sequence
         if ($this->token_data["seq_nr"] > 0) {
             $this->model->sequenceStep();
         }
 
-        // this logic should be part of token manager
+        // this logic should be part of token model
 
         foreach ($this->requireUUID as $id) {
             if(!$this->model->hasTokenValue($id)) {
-                $this->log("required referece is missing")
+                $this->log("required referece is missing");
                 return false;
             }
         }
@@ -350,23 +353,25 @@ class Token extends Validator {
         $this->model->updateAccess();
 
         if ($this->model->hasTokenValue("seq_nr") &&
-            (!isset($this->token_info["seq_nr"]) ||
-            empty($this->token_info["seq_nr"]))) {
+            array_key_exists("seq_nr", $this->token_info)) {
+            if (!isset($this->token_info["seq_nr"]) ||
+                empty($this->token_info["seq_nr"])) {
 
-            // no sequence provided
-            $this->log("missing seq_nr but requested");
+                // no sequence provided
+                $this->log("missing seq_nr but requested");
 
-            $this->model->consumeToken();
-            return false;
-        }
+                $this->model->consumeToken();
+                return false;
+            }
 
-        if (!$this->manaer->checkTokenValue("seq_nr",
-                                            $this->token_info["seq_nr"])) {
-            // out of bounds
-            $this->model->consumeToken();
-            $this->log("token sequence out of bounds");
+            if (!$this->model->checkTokenValue("seq_nr",
+                                               $this->token_info["seq_nr"])) {
+                // out of bounds
+                $this->model->consumeToken();
+                $this->log("token sequence out of bounds");
 
-            return false;
+                return false;
+            }
         }
 
         if ($this->token_data["seq_nr"] == 1 &&
@@ -455,7 +460,7 @@ class Token extends Validator {
             }
         }
         else if ($this->token_type == "Bearer") {
-            $jwt = new JWT\Parser();
+            $jwt = new TokenParser();
             try {
                 $token = $jwt->parse($this->token);
             }

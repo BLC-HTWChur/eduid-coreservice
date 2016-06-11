@@ -157,10 +157,12 @@ class Token extends DBManager{
 
     // create a new TM instance with the active token as root
     public function getIssuer($type="") {
+        $tm = null;
         if ($this->token) {
-            $tm = new TokenManager($this->db, array("type" => $type));
+            $tm = new Token($this->db, array("type" => $type));
             $tm->setRootToken($this->token);
         }
+        return $tm;
     }
 
     public function getUser() {
@@ -168,9 +170,7 @@ class Token extends DBManager{
             !empty($this->token) &&
             !empty($this->token["user_uuid"])) {
 
-            require_once("Models/class.UserManager.php");
-
-            $um = new UserManager($this->db);
+            $um = new User($this->db);
             if ($um->findByUUID($this->token["user_uuid"])) {
                 return $um;
             }
@@ -369,7 +369,7 @@ class Token extends DBManager{
                 $sqlstr = "INSERT INTO tokens (".implode(",", $aNames).") VALUES (".implode(",", $aPH).")";
                 $sth = $this->db->prepare($sqlstr, $aTypes);
                 $res = $sth->execute($aValues);
-                if(PEAR::isError($res)){
+                if(\PEAR::isError($res)){
                     $this->log($res->getMessage() . " '" . $sqlstr . "' " . implode(", ", $aValues));
                 }
                 else {
@@ -409,14 +409,15 @@ class Token extends DBManager{
 
     public function next() {
         if ($this->active_token >= 0 &&
-            ($this->active_token + 1) < $this->count()) {
+            $this->active_token < $this->count()) {
 
             if ($this->token) {
                 $this->active_token++;
             }
-
-            $this->token = $this->token_list[$this->active_token];
-            return $this->getToken()
+            if($this->active_token < $this->count()) {
+                $this->token = $this->token_list[$this->active_token];
+                return $this->getToken();
+            }
         }
         return null;
     }
@@ -435,7 +436,7 @@ class Token extends DBManager{
             foreach ($options as $f => $c) {
                 if (array_key_exists($f, $this->dbKeys)) {
                     $aTypes[]    = $this->dbKeys[$f];
-                    $aValues[]   = $v;
+                    $aValues[]   = $c;
                     $condition[] = "$f = ?";
                 }
             }
@@ -451,21 +452,25 @@ class Token extends DBManager{
             $sqlstr = "select " . implode(", ", $aDBFields). " from tokens where " . implode(" AND ", $condition);
 
             $sth = $this->db->prepare($sqlstr, $aTypes);
-            $res = $sth->execute($aValue);
+            $res = $sth->execute($aValues);
 
-            while ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
-                $token = array();
+            if (\PEAR::isError($res)) {
+                $this->log($res->getMessage());
+            }
+            else {
+                while ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
+                    $token = array();
+                    foreach ($row as $key => $value) {
+                        if ($key === "extra") {
+                            $token[$key] = json_decode($value, true);
+                        }
+                        else {
+                            $token[$key] = $value;
+                        }
+                    }
 
-                foreach ($row as $key => $value) {
-                    if ($key === "extra") {
-                        $token[$key] = json_decode($value, true);
-                    }
-                    else {
-                        $token[$key] = $value;
-                    }
+                    $this->token_list[] = $token;
                 }
-
-                $this->token_list[] = $token;
             }
             $sth->free();
 
@@ -490,7 +495,6 @@ class Token extends DBManager{
         }
 
         $this->findTokens($cond);
-        $this->next();
 
         return ($this->count() > 0);
     }
@@ -538,7 +542,7 @@ class Token extends DBManager{
             !empty($type) &&
             isset($this->token)) {
 
-            $tm = new TokenManager($this->db);
+            $tm = new Token($this->db);
 
             $tm->setRootToken($this->token);
             $tm->setTokenType($type);
@@ -564,7 +568,7 @@ class Token extends DBManager{
             $sqlstr = "DELETE FROM tokens WHERE kid = ?";
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
             $res = $sth->execute(array($this->token["kid"]));
-            if (PEAR::isError($res)) {
+            if (\PEAR::isError($res)) {
                 $this->log($res->getMessage());
             }
             $sth->free();
@@ -572,15 +576,18 @@ class Token extends DBManager{
     }
 
     private function consume_token_db($key) {
-        $sqlstr = "update table tokens set consumed = ? where token_key = ?";
+        $sqlstr = "update tokens set consumed = ? where token_key = ?";
         $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
 
         $now = time();
 
+        if (\PEAR::isError($sth)) {
+            $this->log($sth->getMessage() . " ". $sqlstr);
+        }
         $res = $sth->execute(array($now,
                                    $key));
 
-        if (PEAR::isError($res))
+        if (\PEAR::isError($res))
         {
             $this->error = $res->getMessage();
         }
@@ -593,7 +600,7 @@ class Token extends DBManager{
         $res = $sth->execute(array($now,
                                    $key));
 
-        if (PEAR::isError($res))
+        if (\PEAR::isError($res))
         {
             $this->error = $res->getMessage();
         }
@@ -606,9 +613,9 @@ class Token extends DBManager{
             $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
 
             $res = $sth->execute(array($this->token["seq_nr"] + 1,
-                                       $this->token[]"kid"));
+                                       $this->token["kid"]));
 
-            if (PEAR::isError($res))
+            if (\PEAR::isError($res))
             {
                 $this->error = $res->getMessage();
                 $this->log($res->getMessage());
@@ -622,9 +629,9 @@ class Token extends DBManager{
         $sth = $this->db->prepare($sqlstr, array("INTEGER", "TEXT"));
 
         $res = $sth->execute(array(time(),
-                                   $this->token_data["kid"]));
+                                   $this->token["kid"]));
 
-        if (PEAR::isError($res))
+        if (\PEAR::isError($res))
         {
             $this->error = $res->getMessage();
             $this->log($res->getMessage());

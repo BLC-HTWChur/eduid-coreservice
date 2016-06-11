@@ -15,7 +15,7 @@ class Base extends \RESTling\Validator {
     protected $requireEmptyMethod = array();
 
     public function __construct($db) {
-        $this->db = db;
+        $this->db = $db;
     }
 
     /**

@@ -12,6 +12,8 @@ set_include_path("./lib" . PATH_SEPARATOR .
 // include autoloader
 include_once('eduid.auto.php');
 
+use \EduID\Service\Error as ErrorService;
+
 if(array_key_exists("PATH_INFO", $_SERVER)) {
     $pi = explode("/", $_SERVER["PATH_INFO"]);
     array_shift($pi);
@@ -24,7 +26,7 @@ if (isset($serviceName) && !empty($serviceName)) {
     $ts = explode("-", $serviceName);
     $serviceName = "EduID\\Service\\";
 
-    serviceName .= implode("", array_map(function($v) {return ucfirst(strtolower($v));}, $ts));
+    $serviceName .= implode("", array_map(function($v) {return ucfirst(strtolower($v));}, $ts));
 
     try {
         $service = new $serviceName();
@@ -35,7 +37,7 @@ if (isset($serviceName) && !empty($serviceName)) {
 }
 
 if (!isset($service)) {
-    $service = new EduID\Service\Error("no service set");
+    $service = new ErrorService("no service set");
 }
 
 $service->run();

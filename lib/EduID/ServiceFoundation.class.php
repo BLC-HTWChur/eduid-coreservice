@@ -85,9 +85,9 @@ class ServiceFoundation extends \RESTling\Service {
 //                "persistent" => true
             );
 
-            $this->db =& MDB2::factory($dsn,$options);
+            $this->db =& \MDB2::factory($dsn,$options);
 
-            if (PEAR::isError($this->db)) {
+            if (\PEAR::isError($this->db)) {
                 $this->fatal("cannot connect to database");
                 $this->status = \RESTling\Service::UNINITIALIZED;
             }

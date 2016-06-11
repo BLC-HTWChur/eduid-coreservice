@@ -11,7 +11,8 @@
 
 namespace EduID\Service;
 
-class ErrorService extends \RESTling\Logger {
+class Error extends \RESTling\Logger {
+
     public function __construct($msg) {
         $this->mark("Start Error Service");
         $this->log("ErrorService::__construct - FATAL ERROR: Error Service launched");

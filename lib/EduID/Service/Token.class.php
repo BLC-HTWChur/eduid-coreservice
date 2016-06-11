@@ -6,10 +6,10 @@
 namespace EduID\Service;
 
 use EduID\ServiceFoundation;
-use EduID\Validator\Data\Token;
+use EduID\Validator\Data\Token as TokenDataValidator;
 use EduID\Model\User;
 use EduID\Model\Service;
-use EduID\ServiceFoundation;
+
 //
 //require_once("Models/class.EduIDValidator.php");
 //require_once("Models/class.UserManager.php");
@@ -104,8 +104,6 @@ class Token extends ServiceFoundation {
         // get the root token info
         $clientToken = $this->tokenValidator->getToken();
 
-        $this->log(json_encode($this->inputData));
-
         $token_extra = array("client_type" => $clientToken["client_id"],
                              "device_name" => $this->inputData["device_name"]);
 
@@ -159,8 +157,6 @@ class Token extends ServiceFoundation {
         $jwt->setExpiration($token["issued_at"] + 3600); //1h valid - FIXME make configurable
 
         $jwt->setSubject($profiles[0]["userid"]); // eduid ID
-
-        $this->log($token["extra"]);
 
         $jwt->set("azp", $token["extra"]["client_type"]);
 

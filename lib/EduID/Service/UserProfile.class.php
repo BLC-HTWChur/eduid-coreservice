@@ -7,6 +7,7 @@
 namespace EduID\Service;
 
 use EduID\ServiceFoundation;
+use EduID\Model\User;
 
 class UserProfile extends ServiceFoundation {
     protected function initializeRun() {
@@ -23,6 +24,12 @@ class UserProfile extends ServiceFoundation {
         else {
             $this->forbidden();
         }
+    }
+
+    protected function put() {
+        $user = new User($this->db);
+
+        $user->addUser($this->data);
     }
 }
 

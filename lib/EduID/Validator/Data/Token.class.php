@@ -5,9 +5,9 @@
 
 namespace EduID\Validator\Data;
 
-use EduID\Validator;
-use EduID\Model\Token;
-use EduID\Model\User;
+use EduID\Validator\Base as Validator;
+use EduID\Model\Token as TokenModel;
+use EduID\Model\User as UserModel;
 
 class Token extends Validator {
     private $user;
@@ -40,8 +40,7 @@ class Token extends Validator {
                     break;
             }
 
-            if (!($this->checkDataFields($aFields) &&
-                  $this->checkGrantType())) {
+            if (!$this->checkDataFields($aFields)) {
                 // problem already logged
                 return false;
             }
@@ -50,16 +49,16 @@ class Token extends Validator {
         return true;
     }
 
-    private function checkGrantType() {
-        if (method_exists($this, "check_" . $this->data["grant_type"])) {
-            return call_user_func(array($this, "check_" . $this->data["grant_type"]));
-        }
+//    private function checkGrantType() {
+//        if (method_exists($this, "validate" . $this->data["grant_type"])) {
+//            return call_user_func(array($this, "_" . $this->data["grant_type"]));
+//        }
+//
+//        $this->log("bad grant type found " . $this->data["grant_type"]);
+//        return false;
+//    }
 
-        $this->log("bad grant type found " . $this->data["grant_type"]);
-        return false;
-    }
-
-    protected function validate_authorization_code() {
+    protected function validate_post_authorization_code() {
         $token = $this->service->getAuthToken();
 
         if ($token["access_key"] != $this->data["code"]) {
@@ -86,7 +85,7 @@ class Token extends Validator {
         return true;
     }
 
-    protected function validate_client_credentials() {
+    protected function validate_post_client_credentials() {
         // verify claims
         $jwt = $this->service->getJWT();
 
@@ -95,15 +94,15 @@ class Token extends Validator {
             !$jwt->hasClaim("name") ||
             empty($jwt->getClaim("name"))) {
 
-            $this->log("missing instance information for client credentials");
+            $this->log("missing instance information for client credentials " . json_encode($jwt->getClaims()));
             return false;
         }
         return true;
     }
 
-    protected function validate_password() {
+    protected function validate_post_password() {
         // ckeck if we know the requested user
-        $this->user = new UserManager($this->db);
+        $this->user = new UserModel($this->db);
 
         if (!$this->user->findByMailAddress($this->data["username"])) {
             $this->log("user not found");
@@ -113,7 +112,7 @@ class Token extends Validator {
         return true;
     }
 
-    protected function validate_validate() {
+    protected function validate_post_validate() {
         // the JTI must be issued to the same service UUID as the authToken
 
         if (!array_key_exists("jti", $this->data)) {
@@ -130,7 +129,7 @@ class Token extends Validator {
         }
 
         $token = $this->service->getAuthToken();
-        $jtm = new Token($this->db);
+        $jtm = new TokenModel($this->db);
         if (!$jtm->findToken($kid)) {
             $this->log("jto not found");
             $this->service->not_found();
@@ -151,7 +150,7 @@ class Token extends Validator {
         }
 
         // not find a user
-        $um = new User($this->db);
+        $um = new UserModel($this->db);
         if (!$um->findByUUID($jtoken["user_uuid"])) {
             $this->log("user not found");
             $this->service->not_found();

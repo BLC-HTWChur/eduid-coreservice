@@ -2,11 +2,16 @@
 
 spl_autoload_register(function ($class) {
     $class = ltrim($class, '\\');
+
+    // error_log("eduid-auto: " . $class);
+
     $parts = explode('\\', $class);
 
     $root = array_shift($parts);
 
-    if (isset($root) && !empty($root)) {
+    if (isset($root) && !empty($root) && !empty($parts)) {
+        // error_log("eduid-auto: OK");
+
         $cpath = array();
         // direct namespace
         $cpath[] = $root . "/" . implode("/", $parts) . ".class.php";
@@ -18,15 +23,17 @@ spl_autoload_register(function ($class) {
 
         // for developer prefixed namespaces
         $root = array_shift($parts);
-        $cpath[] = strtolower($root) . "/src/" . implode("/", $parts) . ".class.php";
-        $cpath[] = strtolower($root) . "/lib/" . implode("/", $parts) . ".class.php";
+        $cpath[] = strtolower($root) . "/src/" . implode("/", $parts) . ".php";
+        $cpath[] = strtolower($root) . "/lib/" . implode("/", $parts) . ".php";
 
         $prefixes = explode(PATH_SEPARATOR, get_include_path());
 
         foreach ( $prefixes as $p ) {
             foreach ($cpath as $path) {
+                // error_log("eduid-auto: $p/$path");
                 if (file_exists($p . "/" . $path)) {
-                    include_once $p . "/" . $path;
+                    require_once $p . "/" . $path;
+                    // error_log("eduid-auto: loaded");
                     break 2;
                 }
             }

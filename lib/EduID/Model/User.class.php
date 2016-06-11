@@ -131,6 +131,162 @@ class User extends DBManager {
         }
         return $retval;
     }
+
+    public function addFederationUser($uuid="") {
+        if (!isset($uuid) || empty($uuid)) {
+            $uuid = $this->user["user_uuid"];
+        }
+
+        if (isset($uuid) && !empty($uuid)) {
+
+            $sqlstr = "insert into federation_users (user_uuid) values (?)";
+            $sth = $this->db->prepare($sqlstr, array("TEXT"));
+            $res = $sth->execute(array($userid));
+
+            $sth->free();
+        }
+    }
+
+    public function addUser($options) {
+
+        $core = array("user_password", "user_uuid", "salt");
+
+        if (isset($options) &&
+            !empty($options) &&
+            array_key_existis("user_password", $options)) {
+
+            $userpw = $options["user_password"];
+            $salt = $this->randomString (10);
+
+            if (array_key_exists("user_uuid", $options)) {
+                $userid = $options["user_uuid"];
+            }
+            else {
+                $userid = $this->generateUuid();
+            }
+
+            // add the user to the database
+            $sql = "insert into users (user_uuid, user_passwd, salt) values (?, ?, ?)";
+            $sth = $this->db->prepare($sqlstr, array("TEXT","TEXT","TEXT"));
+            $res = $sth->execute(array($userid, $userpw, $salt));
+
+            $sth->free();
+
+            $identity = array();
+
+            // now check for an identity
+            if (array_key_exists("identity", $options)) {
+                // separate identity
+                $identity= $options["identity"];
+            }
+            else {
+                foreach ($options as $f => $v) {
+                    if (!in_array($f, $core) && !empty($v)) {
+                        $identity[$f] = $v;
+                    }
+                }
+            }
+
+            if (!empty($identity)) {
+                $this->addUserIdentity($identity, $userid);
+            }
+        }
+    }
+
+    public function addUserIdentity($options, $uuid="") {
+        $idlist = array();
+        if (DBManager::isAssoc($options)) {
+            $idlist[] = $this->prepareIdentity($options, $uuid);
+        }
+        else {
+            $idlist = array_map(function($e) {return $this->prepareIdentity($e, $uuid);}, $options);
+        }
+
+        // now add the fields
+        $idlist = $this->filterValidObjects($idlist, array("user_uuid", "userid", "mailaddress"));
+
+        // verify that we have only new mail addresses
+        $mlist = array();
+        $sqllst = implode(",", $this->mapToAttribute($idlist, "mailaddress", true));
+        $sqlstr = "SELECT mailaddress FROM useridentities WHERE mailaddress IN (".$sqlst.")";
+
+        $sth = $this->db->prepare($sqlstr, array("TEXT","TEXT","TEXT"));
+        $res = $sth->execute(array($userid, $userpw, $salt));
+
+        while ($row = $res->fetchRow()) {
+            $mlist[] = $row[0];
+        }
+
+        $sth->free();
+
+        // filter existing mail addresses
+        if (!empty($mlist)) {
+            $idlist = $this->filterValidObjects($idlist, array("mailaddress" => $mlist));
+        }
+
+        $attr = array("user_uuid", "userid", "mailaddress", "extra");
+
+        $sql = "insert into users (".implode(",", $attr).") values (?, ?, ?, ?)";
+        $sth = $this->db->prepare($sqlstr, array("TEXT","TEXT","TEXT","TEXT"));
+
+        foreach ($this->flattenAttributes($idlist, $attr) as $id) {
+            $res = $sth->execute($id);
+        }
+
+        $sth->free();
+    }
+
+    private function createIdentityId(&$identity) {
+        if (!array_key_exists("userid", $identity)) {
+            $identity["userid"] = $this->generateUuid() . "@eduid.ch";
+        }
+    }
+
+    private function prepareIdentity($identity, $uuid="") {
+        $idfields = array("userid", "mailaddress");
+
+        $id = null;
+
+        if (isset($uuid) &&
+            empty($uuid) ){
+
+            if ($this->user) {
+                // use existing user identity
+                $uuid = $this->user["user_uuid"];
+            }
+            else {
+                return array();
+            }
+        }
+
+        if (isset($identity) &&
+            !empty($identity)) {
+
+            $id = array("user_uuid" => $uuid, "extra" => array());
+
+            $this->createIdentityId($identity);
+
+            foreach ($idfields as $f) {
+                if (array_key_exists($f, $identity) && !empty($identity[$f])) {
+                    $id[$f] = $identity[$f];
+                }
+            }
+
+            foreach (array_keys($identity) as $f) {
+
+                if (!empty($identity[$f]) &&
+                    !in_array($f, $idfields)) {
+
+                    $id["extra"][$f] = $identity[$f];
+                }
+            }
+
+            // bring extra field into the correct format
+            $id["extra"] = json_encode($id["extra"]);
+        }
+
+        return $id;
+    }
 }
 
 ?>

@@ -12,3 +12,5 @@ user-profile.php
 /config/eduid.ini
 
 testdata/*
+
+tests/map_reduce.php

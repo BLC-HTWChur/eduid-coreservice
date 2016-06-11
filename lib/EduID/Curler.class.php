@@ -239,5 +239,10 @@ class Curler {
     public function getBody() {
         return $this->body;
     }
+
+    public function getUrl() {
+        $this->prepareUri();
+        return $this->next_url;
+    }
 }
 ?>
