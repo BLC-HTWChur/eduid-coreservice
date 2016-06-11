@@ -3,15 +3,14 @@ set_include_path("../lib" . PATH_SEPARATOR .
                 get_include_path());
 
 // load RESTling
-include_once('RESTling/contrib/Restling.auto.php');
 include_once('eduid.autoloader.php');
 
 use Lcobucci\JWT as JWT;
 use Lcobucci\JWT\Signer as Signer;
 
-require('class.Curler.php');
+use EduID\Curler;
 
-$param = getopt("u:");
+$param = getopt("u:c:f:");
 /**
  * -n - Servername
  * -u - serverurl
@@ -36,7 +35,9 @@ $c = new Curler($idHost);
 //}
 //
 //read_client_token($c);
-//authenticate_user($c);
+//if (!read_user_token($c)) {
+//    authenticate_user($c);
+//}
 
 
 // service home
@@ -108,6 +109,28 @@ function verify_service($servicehome) {
 
 // try to identify the token endpoint
 
+function store_user_token($token) {
+    $tokenfile = fopen("$cfgdir/user.json", "w");
+
+    if ($tokenfile) {
+        fwrite($tokenfile, $token);
+        fclose($tokenfile);
+    }
+}
+
+function read_user_token($curl) {
+     if (file_exists("$cfgdir/user.json")) {
+        $file = fopen("$cfgdir/user.json","r");
+        $clToken = fread($file,filesize("$cfgdir/user.json"));
+        fclose($file);
+
+        if ($clToken) {
+            $curl->setMacToken(json_decode($clToken, true));
+            return true;
+        }
+     }
+}
+
 function authenticate_user($curl) {
     $username = readline("email");
     $password = readline("password");
@@ -120,7 +143,10 @@ function authenticate_user($curl) {
         $curl->post(json_encode($data), "application/json");
 
         if ($curl->getStatus() == 200) {
-            $curl->setMacToken(json_decode($curl->getBody(), true));
+            $token = $curl->getBody();
+            $curl->setMacToken(json_decode($token, true));
+
+            store_user_token($token);
         }
     }
 }
