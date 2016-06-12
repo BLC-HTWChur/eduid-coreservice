@@ -41,7 +41,7 @@ create table if not exists useridentities
 create table if not exists profiletokens (
     user_uuid varchar(255) not null,  -- user id
     token varchar(255) not null,      -- external token
-    info TEXT                         -- use this to restric access to profile information
+    info TEXT                         -- use this to restrict access to profile information
 );
 
 create table if not exists identityproviders
@@ -85,4 +85,15 @@ create table if not exists serviceusers (
 
 create table if not exists federation_users (
     user_uuid varchar(255) not null
+);
+
+create table if not exists clients (
+    client_uuid varchar(255) primary key,
+    client_id varchar(255) not null,
+    info TEXT
+);
+
+create table if not exists clientadmins (
+    user_uuid varchar(255) not null,
+    client_uuid varchar(255) not null
 );

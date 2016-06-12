@@ -234,11 +234,11 @@ class Token extends DBManager{
      * If token expiration is set, then this function also includes the
      * expiration timestamp;
      */
-    public function newToken($type="MAC") {
+    public function newToken($type="MAC", $fullToken=false) {
         $newToken = array();
 
         $newToken["access_key"] = $this->randomString($this->tokenLength["access_key"]);
-        if ($type == "Bearer") {
+        if ($type == "Bearer" && !$fullToken) {
             $newToken["kid"] = $newToken["access_key"];
         }
         else {
@@ -280,7 +280,7 @@ class Token extends DBManager{
      *
      * At least one of user_uuid, service_uuid, or client_id MUST be set.
      */
-    public function addToken($token=array()) {
+    public function addToken($token=array(), $fullToken=false) {
         $type = $this->token_type;
         if (array_key_exists("type", $token)) {
             $type = $token["type"];
@@ -289,7 +289,7 @@ class Token extends DBManager{
             $type = $token["token_type"];
         }
 
-        $newToken = $this->newToken($type);
+        $newToken = $this->newToken($type, $fullToken);
 
         if (isset($this->root_token)) {
             if (!isset($type) || empty($type)) {
