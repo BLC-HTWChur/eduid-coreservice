@@ -8,25 +8,21 @@ namespace EduID\Validator\Data;
 use EduID\Validator\Base as Validator;
 
 class FederationUser extends Validator {
-
     private $user;
-    private $methods = [];
-
-    public function setOperations($methods) {
-        if (isset($methods) &&
-            !empty($methods) &&
-            is_array($methods)) {
-
-            $this->methods = $methods;
-        }
-        else {
-            $this->methods = [];
+    private $federationOperations = array();
+    
+    public function setRequiredOperations($ops) {
+        if (isset($ops) && !empty($ops)) {
+            if (!is_array($ops)) {
+                $ops = [$ops];
+            }
+            $this->federationOperations = $ops;    
         }
     }
-
+    
     public function validate() {
         $this->user = $this->service->getTokenUser();
-
+            
         if (!$this->check_methods()) {
             $this->service->forbidden();
             return false;
@@ -35,10 +31,11 @@ class FederationUser extends Validator {
     }
 
     private function check_methods() {
-        foreach ($this->methods as $m) {
-            if ($this->method == $m) {
+        if (in_array($this->operation, $this->federationOperations)) {
+            if ($this->user) {
                 return $this->user->isFederationUser();
             }
+            return false;
         }
         return true;
     }

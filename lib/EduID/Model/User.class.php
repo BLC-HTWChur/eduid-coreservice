@@ -153,11 +153,11 @@ class User extends DBManager {
 
         if (isset($options) &&
             !empty($options) &&
-            array_key_existis("user_password", $options)) {
+            array_key_exists("user_password", $options)) {
 
-            $userpw = $options["user_password"];
             $salt = $this->randomString (10);
-
+            $userpw = sha1($salt . $options["user_password"]);
+            
             if (array_key_exists("user_uuid", $options)) {
                 $userid = $options["user_uuid"];
             }
@@ -167,7 +167,7 @@ class User extends DBManager {
 
             // add the user to the database
             $sql = "insert into users (user_uuid, user_passwd, salt) values (?, ?, ?)";
-            $sth = $this->db->prepare($sqlstr, array("TEXT","TEXT","TEXT"));
+            $sth = $this->db->prepare($sql, array("TEXT","TEXT","TEXT"));
             $res = $sth->execute(array($userid, $userpw, $salt));
 
             $sth->free();
@@ -188,6 +188,8 @@ class User extends DBManager {
             }
 
             if (!empty($identity)) {
+                // $this->log("add identity " . json_encode($identity));
+                
                 $this->addUserIdentity($identity, $userid);
             }
         }
@@ -195,23 +197,27 @@ class User extends DBManager {
 
     public function addUserIdentity($options, $uuid="") {
         $idlist = array();
-        if (DBManager::isAssoc($options)) {
+        if (self::isAssoc($options)) {
+            // $this->log("create single identity");
             $idlist[] = $this->prepareIdentity($options, $uuid);
         }
         else {
+            // $this->log("create multiple identities");
             $idlist = array_map(function($e) {return $this->prepareIdentity($e, $uuid);}, $options);
         }
 
         // now add the fields
         $idlist = $this->filterValidObjects($idlist, array("user_uuid", "userid", "mailaddress"));
 
+        // $this->log(json_encode($idlist));
+        
         // verify that we have only new mail addresses
         $mlist = array();
         $sqllst = implode(",", $this->mapToAttribute($idlist, "mailaddress", true));
-        $sqlstr = "SELECT mailaddress FROM useridentities WHERE mailaddress IN (".$sqlst.")";
+        $sqlstr = "SELECT mailaddress FROM useridentities WHERE mailaddress IN (".$sqllst.")";
 
-        $sth = $this->db->prepare($sqlstr, array("TEXT","TEXT","TEXT"));
-        $res = $sth->execute(array($userid, $userpw, $salt));
+        $sth = $this->db->prepare($sqlstr);
+        $res = $sth->execute();
 
         while ($row = $res->fetchRow()) {
             $mlist[] = $row[0];
@@ -224,12 +230,15 @@ class User extends DBManager {
             $idlist = $this->filterValidObjects($idlist, array("mailaddress" => $mlist));
         }
 
+        // $this->log(json_encode($idlist));
+
         $attr = array("user_uuid", "userid", "mailaddress", "extra");
 
-        $sql = "insert into users (".implode(",", $attr).") values (?, ?, ?, ?)";
-        $sth = $this->db->prepare($sqlstr, array("TEXT","TEXT","TEXT","TEXT"));
+        $sql = "insert into useridentities (".implode(",", $attr).") values (?, ?, ?, ?)";
+        $sth = $this->db->prepare($sql, array("TEXT","TEXT","TEXT","TEXT"));
 
         foreach ($this->flattenAttributes($idlist, $attr) as $id) {
+            // $this->log("insert identity " . json_encode($id));
             $res = $sth->execute($id);
         }
 

@@ -22,7 +22,9 @@ class ServiceDiscovery extends ServiceFoundation {
         $this->tokenValidator->resetAcceptedTokens(array("Bearer", "MAC"));
 
         $fu = new FederationUser($this->db);
-        $fu->setOperations(array("get_federation", "post_federation"));
+        $fu->setRequiredOperations(array("get_federation", 
+                                         "post_federation", 
+                                         "put_federation"));
         $this->addHeaderValidator($fu);
 
         $this->serviceModel = new ServiceModel($this->db);

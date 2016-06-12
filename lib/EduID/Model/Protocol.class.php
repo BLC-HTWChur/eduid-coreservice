@@ -51,7 +51,7 @@ class Protocol extends DBManager {
 
             foreach ($list as $api) {
                 if (!array_key_exists($api, $rsd)) {
-                    $rsd = null
+                    $rsd = null;
                     break;
                 }
             }

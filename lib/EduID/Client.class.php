@@ -186,6 +186,9 @@ class Client extends ModelFoundation {
                     // die("Invalid credentials");
                 }
             }
+            else {
+                $this->log("user token present");
+            }
 
             $this->curl->setMacToken($usrToken);
 
@@ -195,6 +198,9 @@ class Client extends ModelFoundation {
 
             if ($this->curl->getStatus() != 200) {
                 // try again
+                $this->log("user token rejected? " . $this->curl->getStatus());
+                $this->log("user token rejected? " . $this->curl->getLastURI());
+                
                 $this->curl->setMacToken($cliToken);
                 $this->curl->setPathInfo("token");
                 $usrToken = $this->auth_with_server();

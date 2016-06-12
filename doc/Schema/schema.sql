@@ -83,6 +83,6 @@ create table if not exists serviceusers (
     last_access integer
 );
 
-create table if not exists federation_users {
+create table if not exists federation_users (
     user_uuid varchar(255) not null
-}
+);
