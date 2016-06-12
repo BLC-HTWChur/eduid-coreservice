@@ -32,8 +32,8 @@ class ServiceDiscovery extends ServiceFoundation {
      * find services based on their URL
      */
     protected function post() {
-        $data = $this->serviceModel->findServiceByURL($this->data["url"]);
-        if (!$data) {
+        
+        if (!$this->serviceModel->findServiceByURI($this->inputData["url"])) {
             $this->not_found();
         }
 
@@ -66,14 +66,18 @@ class ServiceDiscovery extends ServiceFoundation {
      * add a new service to the federation
      */
     protected function put_federation() {
-        $tm = new Token($this->db, array("type"=>"MAC"));
+        if ($this->serviceModel->findServiceByURI($this->inputData["mainurl"])) {
+            $this->bad_request("Service already exists");
+        }
+        else {
+            $tm = new Token($this->db, array("type"=>"MAC"));
+            
+            $this->inputData["token"] = $tm->newToken();
 
-        $this->inputData["token"] = $tm->newToken();
+            $this->serviceModel->addService($this->inputData);
 
-        $this->serviceModel->addService($this->inputData);
-
-        $this->data = $this->inputData["token"];
-
+            $this->data = $this->inputData["token"];
+        }
     }
 }
 ?>

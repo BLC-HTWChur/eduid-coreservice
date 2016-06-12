@@ -51,34 +51,45 @@ class Service extends DBManager{
     public function addService($serviceDef) {
         $aFields = array_keys($this->dbKeys);
 
-        $atypes = array();
+        $aTypes = array();
         $values = array();
-
-        foreach ($aFields as $f) {
-            if (array_key_exists($f, $serviceDef) &&
-                !empty($serviceDef[$f])) {
-
-                $values[] = $serviceDef[$f];
-                $atypes[] = "TEXT";
+        $aNames = array();
+        
+        $retval = false;
+        
+        if ($this->checkMandatoryFields($serviceDef, 
+                                        array("service_uuid", 
+                                              "name", 
+                                              "mainurl",
+                                              "idurl",
+                                              "rsdurl"))) {
+            
+            foreach ($aFields as $f) {
+                if (array_key_exists($f, $serviceDef) &&
+                    !empty($serviceDef[$f])) {
+    
+                    $aNames[] = $f;
+                    $values[] = $serviceDef[$f];
+                    $aTypes[] = "TEXT";
+                }
             }
-            else if ($f != "info") {
-                $this->log("missing data field");
-                return false;
+
+            $sqlstr = "INSERT INTO services (" . implode(",", $aNames) . 
+                      ") VALUES (".
+                      implode(",", array_map(function($e){return "?";}, $aNames)) .
+                      ")";
+
+            $retval = true;
+            $sth = $this->db->prepare($sqlstr, $aTypes);
+            $res = $sth->execute($values);
+
+            if(\PEAR::isError($res)) {
+                $this->log($res->getMessage());
+                $retval = false;
             }
+
+            $sth->free();
         }
-
-        $sqlstr = "INSERT INTO services (" . implode(",", $aFields) . ") VALUES (?,?,?,?,?,?)";
-
-        $retval = true;
-        $sth = $this->db->prepare($sqlstr, $aTypes);
-        $res = $sth->execute($values);
-
-        if(PEAR::isError($res)) {
-            $this->log($res->getMessage());
-            $retval = false;
-        }
-
-        $sth->free();
         return $retval;
     }
 
@@ -152,18 +163,21 @@ class Service extends DBManager{
             return $this->findService(array("mainurl"        =>$service_uri,
                                             "token_endpoint" => $service_uri));
         }
+        return false;
     }
 
     public function findServiceByName($name) {
         if (isset($name) && !empty($name)) {
             return $this->findService(array("name" => $name));
         }
+        return false;
     }
 
     public function findServiceByNamePart($name) {
         if (isset($name) && !empty($name)) {
             return $this->findService(array("name" => $name, "like" => "both"));
         }
+        return false;
     }
 
     private function findService($options=array()) {
@@ -177,12 +191,12 @@ class Service extends DBManager{
             foreach (array("service_uuid", "mainurl", "token_endpoint", "rsdurl", "name") as $k) {
                 if (array_key_exists($k, $options)) {
                     $lk  = $options[$k];
-                    $op = $k . ' = ?'
+                    $op = $k . ' = ?';
 
                     if (array_key_exists("like", $options) &&
                         $this->dbKeys[$k] == "TEXT") {
 
-                        $op = $k . ' LIKE ?'
+                        $op = $k . ' LIKE ?';
                         if ($options["like"] == "left" ||
                             $options["like"] == "both") {
                             $lk = $lk . "%";
@@ -192,9 +206,9 @@ class Service extends DBManager{
                             $lk = "%" . $lk;
                         }
                     }
-                    array_push($filter, $op);
-                    array_push($types, $this->dbKeys[$k]);
-                    array_push($values, $lk);
+                    $filter[] = $op;
+                    $types[]  = $this->dbKeys[$k];
+                    $values[] = $lk;
                 }
             }
             if (!empty($filter)) {

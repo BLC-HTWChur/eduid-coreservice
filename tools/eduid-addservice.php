@@ -3,215 +3,29 @@ set_include_path("../lib" . PATH_SEPARATOR .
                 get_include_path());
 
 // load RESTling
-include_once('eduid.autoloader.php');
+include_once('eduid.auto.php');
 
-use Lcobucci\JWT as JWT;
-use Lcobucci\JWT\Signer as Signer;
+use EduID\Client\ServiceRegistration as Client;
 
-use EduID\Curler;
+$cli = new Client();
 
-$param = getopt("u:c:f:");
-/**
- * -n - Servername
- * -u - serverurl
- */
-
-// create a new config directory
-$home = $_SERVER["HOME"];
-$cfgdir = "$home/.eduid";
-
-if (!file_exists($cfgdir)) {
-    mkdir("$home/.eduid", 700);
-}
-
-$idHost = "http://192.168.0.72/eduid/eduid.php";
-$tPath = "token";
-$sPath = "federation";
-
-$c = new Curler($idHost);
-
-//if (!file_exists("$cfgdir/client.json")) {
-//    register_client($c);
-//}
-//
-//read_client_token($c);
-//if (!read_user_token($c)) {
-//    authenticate_user($c);
-//}
-
-
-// service home
-$servicehome = $param["u"];
-
-// split the service home into proto/host/path
-echo $servicehome . "\n";
-
-$serviceInfo = verify_service($servicehome);
-echo json_encode($serviceInfo) . "\n";
-
-function verify_service($servicehome) {
-    $s = new Curler($servicehome);
-
-    $s->setPathInfo("service.txt");
-    $s->get();
-
-    if ($s->getStatus() == 200) {
-        $lines = explode("\n" , $s->getBody());
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (!empty($line)) {
-                list($type, $path) = explode("; ", $line);
-
-                if ($type == "application/x-rsd+json") {
-                    $s->setPath($path);
-                    $s->setPathInfo();
-
-                    // get the rsd
-                    $s->get();
-
-                    if ($s->getStatus() == 200) {
-                        $rsd = json_decode($s->getBody(),true);
-                        $servicename = $rsd["engineName"];
-                        $basepath    = rtrim($rsd["homePageLink"], "/");
-                        $enginepath  = trim($rsd["engineLink"], "/");
-                        $tokenservice = "token";
-
-                        if (array_key_exists("org.ietf.oauth2", $rsd["apis"])) {
-                            $apilink = trim($rsd["apis"]["org.ietf.oauth2"]["apiLink"], "/");
-
-                            $tokenendpoint = $basepath;
-                            if (!empty($enginepath)) {
-                                $tokenendpoint .= "/$enginepath";
-                            }
-                            $tokenendpoint .= "/$apilink/$tokenservice";
-
-                            // the serviceInfo is stored in the federation
-                            return array("service_uuid" => generate_uuid(),
-                                         "name" => $servicename,
-                                         "mainurl" => $servicehome,
-                                         "idurl" => $tokenendpoint,
-                                         "rsdurl" => $s->getLastUri());
-                        }
-
-                        break; // end for loop.
-                    }
-                    else {
-                        echo "cannot get rsd\n";
-                    }
-                }
-            }
+if ($cli->authorize()) {
+    $cli->report("Client accepted");
+    
+    if ($si = $cli->verify_service()) {
+        if($cli->register_service($si)) {
+            $cli->report("Service registered");
+        }
+        else {
+            $cli->fatal("Service rejected");
         }
     }
     else {
-        echo("I cannot determine service endpoints!\n");
+        $cli->fatal("Service invalid");
     }
 }
-
-// try to identify the token endpoint
-
-function store_user_token($token) {
-    $tokenfile = fopen("$cfgdir/user.json", "w");
-
-    if ($tokenfile) {
-        fwrite($tokenfile, $token);
-        fclose($tokenfile);
-    }
-}
-
-function read_user_token($curl) {
-     if (file_exists("$cfgdir/user.json")) {
-        $file = fopen("$cfgdir/user.json","r");
-        $clToken = fread($file,filesize("$cfgdir/user.json"));
-        fclose($file);
-
-        if ($clToken) {
-            $curl->setMacToken(json_decode($clToken, true));
-            return true;
-        }
-     }
-}
-
-function authenticate_user($curl) {
-    $username = readline("email");
-    $password = readline("password");
-
-    if (!empty($username) && !empty($password)) {
-        $data = array("grant_type" => "password",
-                      "username"   => $username,
-                      "password"   => $password);
-
-        $curl->post(json_encode($data), "application/json");
-
-        if ($curl->getStatus() == 200) {
-            $token = $curl->getBody();
-            $curl->setMacToken(json_decode($token, true));
-
-            store_user_token($token);
-        }
-    }
-}
-
-function read_client_token($curl) {
-    if (file_exists("$cfgdir/client.json")) {
-        $file = fopen("$cfgdir/client.json","r");
-        $clToken = fread($file,filesize("$cfgdir/client.json"));
-        fclose($file);
-
-        if ($clToken) {
-            $curl->setMacToken(json_decode($clToken, true));
-        }
-    }
-}
-
-function register_client($curl) {
-
-    // CLIENT INFORMATION
-    $appID = "ch.htwchur.eduid.cli";
-    $appMacKey= "";
-    $appKID = "";
-    $appAccessKey = "";
-
-    $client_id = generate_uuid();
-    $client_name = gethostname();
-
-    $jwt = new JWT\Builder();
-
-    $jwt->setIssuer($appID);
-    $jwt->setAudience("$idHost/$tPath");
-    $jwt->setHeader("kid", $appKID);
-    $jwt->setSubject($client_id);
-    $jwt->set("name", $client_name);
-
-    $cn = 'Lcobucci\JWT\Signer\Hmac\Sha256';
-    $signer = new $cn;
-    $jwt->sign($signer,
-               $appMacKey);
-
-    $t = $jwt->getToken();
-
-    $curl->setHeader(array("Authorization"=> "Bearer $t"));
-    $data = array("grant_type" => "client_credentials");
-    $curl->post(json_encode($data), "application/json");
-
-    if ($curl->getStatus() == 200) {
-        // store the body in our config file
-        $tokenfile = fopen("$cfgdir/client.json", "w");
-
-        if ($tokenfile) {
-            fwrite($tokenfile, $curl->getBody());
-            fclose($tokenfile);
-        }
-    }
-}
-
-function generate_uuid() {
-	return sprintf( '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-		mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
-		mt_rand( 0, 0xffff ),
-		mt_rand( 0, 0x0fff ) | 0x4000,
-		mt_rand( 0, 0x3fff ) | 0x8000,
-		mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
-	);
+else {
+    $cli->fatal("Client rejected");
 }
 
 ?>

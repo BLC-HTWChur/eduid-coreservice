@@ -40,7 +40,6 @@ class ModelFoundation extends \RESTling\Logger {
         $a = array();
 
         if (self::isAssoc($fields)) {
-            $this->log("associative array");
             foreach ($fields as $e => $v) {
                 if (array_key_exists($e, $object) &&
                         !empty($object[$e])) {
@@ -64,7 +63,6 @@ class ModelFoundation extends \RESTling\Logger {
             }
         }
         else {
-            $this->log("sequential array");
             $a = array_map(function ($e) use ($object) {
                 return (array_key_exists($e, $object) &&
                         !empty($object[$e]));
