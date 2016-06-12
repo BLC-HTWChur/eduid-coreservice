@@ -16,10 +16,10 @@ use EduID\Client as Client;
 $cli = new Client();
 
 if ($cli->authorize()) {
-    echo "Client accepted\n";
+    $cli->report("Client accepted");
 }
 else {
-    echo "Client rejected\n";
+    $cli->fatal("Client rejected");
 }
 
 ?>
