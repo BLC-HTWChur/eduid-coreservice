@@ -10,6 +10,7 @@ use EduID\Client as Client;
  * -f <url>  - federation Server url
  * -c <path> - config home
  * -C - create config dir
+ * -t - terminate session
  * -x - unprotected
  */
 

@@ -91,14 +91,6 @@ class UserRegistration extends ClientBase {
         
         return false;
     }
-    
-    public function add_federation_user() {
-        
-    }
-    
-    public function fetch_userinfo() {
-        
-    }
 }
 
 ?>

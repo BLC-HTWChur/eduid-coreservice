@@ -18,10 +18,7 @@ class User extends DBManager {
 
         if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
             $this->user = array();
-            $aMap = array("ui.mailaddress" => "mailAddress",
-                          "u.user_password" => "user_passwd",
-                          "u.user_uuid "=> "user_uuid");
-
+            
             foreach ($row as $k => $v) {
                 $this->user[$k] = $v;
             }
@@ -34,17 +31,15 @@ class User extends DBManager {
     public function findByUUID($uuid) {
         $this->user = null;
 
-        $sqlstr = "SELECT user_uuid, user_passwd from users where user_uuid = ?";
+        $sqlstr = "SELECT user_uuid, user_passwd, salt from users where user_uuid = ?";
         $sth = $this->db->prepare($sqlstr, array("TEXT"));
         $res = $sth->execute(array($uuid));
 
         if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
             $this->user = array();
-            $aMap = array("user_passwd",
-                          "user_uuid");
-
-            foreach ($aMap as $k) {
-                $this->user[$k] = $row[$k];
+        
+            foreach ($row as $k => $v) {
+                $this->user[$k] = $v;
             }
             $sth->free();
             return true;
@@ -194,6 +189,34 @@ class User extends DBManager {
             }
         }
     }
+    
+    public function updateUserPassword($oldpassword, $newpassword) {
+        
+        if ($this->user && 
+            $this->user["user_uuid"]) {
+            
+//            foreach ($this->user as $k => $v) {
+//                $this->log("user info: $k :: $v");
+//            }
+            
+            $pwd = sha1($this->user["salt"] . $oldpassword);
+            
+            if ($pwd == $this->user["user_passwd"] ) {
+                $salt = $this->randomString (10);
+                $userpw = sha1($salt . $newpassword);
+
+                $sqlstr = "update users set user_passwd = ?, salt = ? where user_uuid = ?";
+                
+                $sth = $this->db->prepare($sqlstr, array("TEXT","TEXT","TEXT"));
+                $res = $sth->execute(array($userpw, $salt, $this->user["user_uuid"]));
+                
+                $sth->free();
+                
+                return true;
+            }
+        }
+        return false;
+    }
 
     public function addUserIdentity($options, $uuid="") {
         $idlist = array();
@@ -296,6 +319,79 @@ class User extends DBManager {
 
         return $id;
     }
+    
+    // like make sys admin
+    public function grantFederationUser() {
+        if ($this->user) {
+            // find if the selected user is already in the federation list
+            
+            $sqlstr = "select user_uuid from federation_users where user_uuid = ?";
+            $sth = $this->db->prepare($sql, array("TEXT"));
+            $res = $sth->execute(array($this->user["user_uuid"]));
+
+            $row = $res->fetchRow();
+            
+            $sth->free();
+            
+            // if not, we add the user
+            if (!$row) {
+                $sqlstr = "insert into federation_users (user_uuid) values (?)";
+                $sth = $this->db->prepare($sql, array("TEXT"));
+                $res = $sth->execute(array($this->user["user_uuid"]));
+            
+                $sth->free();
+            
+                if ($res > 0) {
+                    return true;
+                }
+            }
+            else {
+                // already exists
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // remove admin privileges
+    public function revokeFederationUser() {
+        if ($this->user) {
+            $sqlstr = "delete from federation_users where user_uuid = ?";
+            $sth = $this->db->prepare($sql, array("TEXT"));
+            $res = $sth->execute(array($this->user["user_uuid"]));
+
+            $sth->free();
+            
+            if ($res > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public function getFederationUserList() {
+        $retval = [];
+        
+        $sqlstr = "select u.user_uuid, u.mailaddress, u.extra from useridentities u, federation_users f where f.user_uuid = u.user_uuid";
+        $sth = $this->db->prepare($sqlstr);
+        $res = $sth->execute();
+        
+        while ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
+            $aProfile = array(
+                "user_uuid"   => $row["user_uuid"],
+                "mailaddress" => $row["mailaddress"]
+            );
+            $e = json_decode($row["extra"], true);
+            foreach($e as $k => $v) {
+                $aProfile[$k] = $v;
+            }
+            
+            $retval[] = $aProfile;
+        }
+        $sth->free();
+        
+        return $retval;
+    }    
 }
 
 ?>

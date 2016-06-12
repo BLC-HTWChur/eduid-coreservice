@@ -11,7 +11,7 @@ use Lcobucci\JWT\Signer as Signer;
 
 class Client extends ModelFoundation {
 
-    protected $paramShort = "c:f:Cxv";
+    protected $paramShort = "c:f:Cxvt";
     protected $paramLong = "";
     
     protected $param;
@@ -54,6 +54,9 @@ class Client extends ModelFoundation {
             $this->writeConfig = true;
         }
 
+        if (array_key_exists("t", $this->param)) {
+            $this->remove_config_file("user.json");
+        }
         $this->load_config();
     }
 
@@ -62,7 +65,8 @@ class Client extends ModelFoundation {
         $cfgfile = "config.json";
 
         if  (array_key_exists("c", $this->param)) {
-            array_push($cfg,$this->param["c"]);
+            $d = rtrim ($this->param["c"], "/");
+            array_push($cfg,$d);
         }
 
         $cj = null;
@@ -175,7 +179,7 @@ class Client extends ModelFoundation {
                 }
                 $this->curl->setMacToken($cliToken);
             }
-
+                    
             $this->curl->setMacToken($cliToken);
 
             if (!$usrToken) {
@@ -224,6 +228,8 @@ class Client extends ModelFoundation {
     }
 
     private function auth_with_server() {
+        $this->curl->setPathInfo("token");
+
         $username = readline("email:     ");
         $password = readline("password:  ");
 
@@ -241,6 +247,9 @@ class Client extends ModelFoundation {
                                          true); // always store the user token 
 
                 return $token;
+            }
+            else {
+                $this->log($this->curl->getStatus());
             }
         }
         return null;
@@ -313,6 +322,23 @@ class Client extends ModelFoundation {
                 }
                 fclose($cf);
             }
+        }
+    }
+    
+    private function remove_config_file($filename) {
+        $cfg = ["/etc/eduid", $_SERVER["HOME"] . "/.eduid"];
+        
+        if  (array_key_exists("c", $this->param)) {
+            $d = rtrim ($this->param["c"], "/");
+            array_unshift($cfg,$d);
+        }
+        
+        foreach($cfg as $d) {
+            if (file_exists($d . "/" .$filename)) {
+                $this->log("remove $d/$filename");
+                unlink($d . "/" . $filename);
+                break;
+            }    
         }
     }
     
