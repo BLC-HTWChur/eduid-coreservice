@@ -2,14 +2,20 @@
 
 namespace EduID;
 
+use EduID\ModelFoundation;
+
 use EduID\Curler;
 
 use Lcobucci\JWT as JWT;
 use Lcobucci\JWT\Signer as Signer;
 
-class Client extends \RESTling\Logger {
+class Client extends ModelFoundation {
 
-    private $param;
+    protected $paramShort = "c:f:Cxv";
+    protected $paramLong = "";
+    
+    protected $param;
+    
     private $config;
     private $configFile;
     private $configDir;
@@ -27,6 +33,9 @@ class Client extends \RESTling\Logger {
     public $curl;
 
     public function __construct() {
+        
+        $this->setDebugMode(false);
+        
         $this->credentials = array(
             "issuer" => "ch.htwchur.eduid.cli",
             "kid"    => "1234test-12",
@@ -35,8 +44,12 @@ class Client extends \RESTling\Logger {
             "host"   => gethostname()
         );
 
-        $this->param = getopt("c:f:Cx");
+        $this->param = getopt($this->paramShort);
 
+        if (array_key_exists("v", $this->param)) {
+            $this->setDebugMode(true);
+        }
+        
         if (array_key_exists("C", $this->param)) {
             $this->writeConfig = true;
         }
@@ -79,7 +92,7 @@ class Client extends \RESTling\Logger {
 
                 $cn = "$cfgdir/$cfgfile";
 
-                $config["client_id"] = $this->generate_uuid();
+                $config["client_id"] = $this->generateUuid();
 
                 $this->write_config_file($config, $cn);
             }
@@ -109,12 +122,11 @@ class Client extends \RESTling\Logger {
 
 
             if (!preg_match("/^https?:\/\//", $fs)) {
+                $prefix = "https";
                 if (array_key_exists("x", $this->param)) {
-                    $fs = "http://$fs";
+                    $prefix = "http";
                 }
-                else {
-                    $fs = "https://$fs";
-                }
+                $fs = "$prefix://$fs";
             }
 
             if (!preg_match("/\/eduid.php$/", $fs)) {
@@ -137,6 +149,7 @@ class Client extends \RESTling\Logger {
         }
 
         if ($this->config["federation_service"]) {
+            $this->log("init curler using" . $this->config["federation_service"]);
             $this->curl = new Curler($this->config["federation_service"]);
         }
         return true;
@@ -148,12 +161,12 @@ class Client extends \RESTling\Logger {
             $cliToken = $this->read_config_file($this->configDir . "/client.json");
             $usrToken = $this->read_config_file($this->configDir . "/user.json");
 
+            if(!$this->verify_federation_service()) {
+                $this->log("federation service not verified.");
+                return false;
+            }
+            
             if (!$cliToken) {
-                if(!$this->verify_federation_service()) {
-                    $this->log("federation service not verified.");
-                    return false;
-                }
-
                 $cliToken = $this->register_client();
                 if (!$cliToken) {
                     $this->log("no client token");
@@ -191,6 +204,9 @@ class Client extends \RESTling\Logger {
                     // die("Invalid credentials");
                 }
             }
+            else {
+                $this->log($this->curl->getBody());
+            }
 
             // OK we are good.
             $this->curl->setMacToken($usrToken);
@@ -202,8 +218,8 @@ class Client extends \RESTling\Logger {
     }
 
     private function auth_with_server() {
-        $username = readline("email");
-        $password = readline("password");
+        $username = readline("email:     ");
+        $password = readline("password:  ");
 
         if (!empty($username) && !empty($password)) {
             $data = array("grant_type" => "password",
@@ -215,7 +231,8 @@ class Client extends \RESTling\Logger {
             if ($this->curl->getStatus() == 200) {
                 $token = json_decode($this->curl->getBody(), true);
                 $this->write_config_file($this->curl->getBody(),
-                                         $this->configDir . "/user.json");
+                                         $this->configDir . "/user.json",
+                                         true); // always store the user token 
 
                 return $token;
             }
@@ -248,7 +265,8 @@ class Client extends \RESTling\Logger {
         if ($this->curl->getStatus() == 200) {
             // store the body in our config file
             $this->write_config_file($this->curl->getBody(),
-                                     $this->configDir . "/client.json");
+                                     $this->configDir . "/client.json",
+                                     true); // always store the client token
 
             return json_decode($this->curl->getBody(), true);
         }
@@ -273,12 +291,12 @@ class Client extends \RESTling\Logger {
         return null;
     }
 
-    private function write_config_file($data, $fileName="") {
+    private function write_config_file($data, $fileName="", $force=false) {
         if (!isset($fileName) || empty($fileName)) {
             $fileName = $this->configFile;
         }
 
-        if ($this->writeConfig) {
+        if ($this->writeConfig || $force) {
             $cf = fopen($fileName, "w");
             if ($cf) {
                 if (is_string($data)) {
@@ -291,15 +309,14 @@ class Client extends \RESTling\Logger {
             }
         }
     }
-
-    public function generate_uuid() {
-        return sprintf( '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
-            mt_rand( 0, 0xffff ),
-            mt_rand( 0, 0x0fff ) | 0x4000,
-            mt_rand( 0, 0x3fff ) | 0x8000,
-            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
-        );
+    
+    public function report($msg) {
+        $this->log($msg);
+    }
+    
+    public function fatal($msg) {
+        parent::fatal($msg);
+        exit(1);
     }
 }
 
