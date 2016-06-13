@@ -9,13 +9,17 @@ use EduID\Client as ClientBase;
 use EduID\Curler;
 
 class UserRegistration extends ClientBase {
-    
+
     private $userinfo = array();
-    
+
     public function __construct() {
         $this->paramShort .= "e:G:F:a";
         parent::__construct();
-        
+
+        if (!$this->authorize()) {
+            $this->fatal("Client rejected");
+        }
+
         if (array_key_exists("e", $this->param)) {
             $this->userinfo["mailaddress"] = $this->param["e"];
         }
@@ -27,10 +31,10 @@ class UserRegistration extends ClientBase {
         }
         // -a adds the user with the identity as federation user
     }
-    
+
     public function verify_user() {
-        
-        // read email if needed 
+
+        // read email if needed
         if (!array_key_exists("mailaddress", $this->userinfo)) {
             $this->userinfo["mailaddress"] = readline("mail-address: ");
         }
@@ -44,7 +48,7 @@ class UserRegistration extends ClientBase {
         }
         // read password
         $this->userinfo["user_password"]   = readline("password:     ");
-        
+
         $n = array();
         if (array_key_exists("given_name", $this->userinfo)) {
             $n[] = $this->userinfo["given_name"];
@@ -53,9 +57,9 @@ class UserRegistration extends ClientBase {
             $n[] = $this->userinfo["family_name"];
         }
         $this->userinfo["name"] = implode(" ", $n);
-        
+
         if(
-            $this->checkMandatoryFields($this->userinfo, 
+            $this->checkMandatoryFields($this->userinfo,
                                         array(
                                             "mailaddress",
                                             "user_password",
@@ -68,13 +72,13 @@ class UserRegistration extends ClientBase {
         }
         return null;
     }
-    
+
     public function register_user($userInfo) {
         if (isset($userInfo) && !empty($userInfo)) {
             $this->curl->setPathInfo("user-profile/federation");
-            
+
             $this->curl->put(json_encode($userInfo), 'application/json');
-            
+
             if ($this->curl->getStatus() == "200") {
                 // ok we have the registration token
                 // print out
@@ -83,12 +87,12 @@ class UserRegistration extends ClientBase {
                 return true;
             }
             else {
-                $this->log("federation service refused user infomation: " . 
+                $this->log("federation service refused user infomation: " .
                            $this->curl->getStatus());
                 $this->log($this->curl->getBody());
             }
         }
-        
+
         return false;
     }
 }

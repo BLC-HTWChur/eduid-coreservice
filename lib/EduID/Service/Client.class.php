@@ -35,83 +35,59 @@ class Client extends ServiceFoundation {
         $cm = $this->getClient();
 
         if ($tu->isFederationUser()) {
+            $this->log("get all clients");
             $this->data = $cm->getAllClients();
         }
         else {
+            $this->log("get user clients");
             $this->data = $cm->getUserClients($tu->getUUID());
         }
     }
 
     protected function put() {
         // new client
+        $this->log("add new client");
         $tu = $this->getTokenUser();
-        if ($tu->isFederationUser()) {
-            // create client
-            $cm = $this->getClient();
-            if ($cm->addClient($this->inputData)) {
-                $this->data = $cm->getClient();
-            }
-            else {
-                $this->bad_request();
-            }
-        }
-        else {
-            $this->forbidden();
-        }
+
+        $cm = $this->getClient();
+
+        $cm->addClient($this->inputData);
+        $this->data = $cm->getClient();
+
     }
 
     protected function post() {
         // create new version
-        $ci = array_shift($this->path_info);
+        $this->log("add new client version " . $this->inputData["version_id"]);
         $cm = $this->getClient();
 
-        if ($cm->getClient() &&
-            array_key_exists("version_id", $this->inputData)) {
-            // we have a client and a new version
-
-            $this->data = $cm->addClientVersion($this->inputData["version_id"]);
-        }
-        else {
-            $this->bad_request();
-        }
+        $this->data = $cm->addClientVersion($this->inputData["version_id"]);
     }
 
     protected function get_user() {
+        $this->log("get client admins");
         $cm = $this->getClient();
-        if ($cm->getClient()) {
-            $this->data = $cm->getClientAdminList();
-        }
-        else {
-            $this->bad_request();
-        }
+
+        $this->data = $cm->getClientAdminList();
     }
 
     protected function put_user() {
+        $this->log("add client admin");
+
         $cm = $this->getClient();
+        $um = $this->clientValidator->getUser();
+        $this->log("MARK". $um->getUUID());
 
-        if ($cm->getClient() &&
-            array_key_exists("version_id", $this->inputData)) {
-            // we have a client and a new version
-
-            $cm->addClientAdmin($this->inputData["user_id"]);
-        }
-        else {
-            $this->bad_request();
-        }
+        $cm->addClientAdmin($um->getUUID());
     }
 
     protected function delete_user() {
+        $this->log("remove client admin");
         $cm = $this->getClient();
 
-        if ($cm->getClient() &&
-            array_key_exists("version_id", $this->inputData)) {
-            // we have a client and a new version
+        // we have a client and a new version
 
-            $cm->removeClientAdmin($this->inputData["user_id"]);
-        }
-        else {
-            $this->bad_request();
-        }
+        $cm->removeClientAdmin($this->clientValidator->getUser()->getUUID());
     }
 }
 

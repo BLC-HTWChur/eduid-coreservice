@@ -9,36 +9,40 @@ use EduID\Client as ClientBase;
 use EduID\Curler;
 
 class ServiceRegistration extends ClientBase {
-    
+
     private $serviceUrl = "";
-    
+
     public function __construct() {
         $this->paramShort .= "u:";
         parent::__construct();
-        
+
+        if (!$this->authorize()) {
+            $this->fatal("Client rejected");
+        }
+
         if (array_key_exists("u", $this->param)) {
             $this->serviceUrl = $this->param["u"];
         }
     }
-    
+
     public function verify_service($servicehome="") {
         $servicehome = trim($servicehome);
-        
+
         if(!isset($servicehome) || empty($servicehome)) {
             $servicehome = $this->serviceUrl;
         }
-        
+
         if (empty($servicehome)) {
             $this->log("no service to verify");
             return null;
         }
-        
+
         if (!preg_match("/^https?:\/\//", $servicehome)) {
             $prefix = "https";
             if (array_key_exists("x", $this->param)) {
                 $prefix = "http";
             }
-            
+
             $servicehome = "$prefix://$servicehome";
         }
 
@@ -49,7 +53,7 @@ class ServiceRegistration extends ClientBase {
 
         if ($s->getStatus() == 200) {
             $lines = explode("\n" , $s->getBody());
-            
+
             foreach ($lines as $line) { // check for services
                 $line = trim($line);
                 if (!empty($line)) {
@@ -88,7 +92,7 @@ class ServiceRegistration extends ClientBase {
                             else {
                                 $this->log("RSD request failed with " . $s->getStatus());
                             }
-                            
+
                             break; // end for loop.
                         }
                         else {
@@ -103,14 +107,14 @@ class ServiceRegistration extends ClientBase {
         }
         return null;
     }
-    
+
     public function register_service($serviceInfo) {
         if (isset($serviceInfo) && !empty($serviceInfo)) {
             $this->curl->setPathInfo("service-discovery/federation");
-            
+
             // verify service info
             if(
-                $this->checkMandatoryFields($serviceInfo, 
+                $this->checkMandatoryFields($serviceInfo,
                                             array(
                                                 "service_uuid",
                                                 "name",
@@ -127,7 +131,7 @@ class ServiceRegistration extends ClientBase {
                     return true;
                 }
                 else {
-                    $this->log("federation service refused service infomation: " . 
+                    $this->log("federation service refused service infomation: " .
                                $this->curl->getStatus());
                     $this->log($this->curl->getBody());
                 }
@@ -136,7 +140,7 @@ class ServiceRegistration extends ClientBase {
                 $this->log("service information is incomplete " . json_encode($serviceInfo));
             }
         }
-        
+
         return false;
     }
 }

@@ -9,24 +9,17 @@ use EduID\Client\ChangePassword as Client;
 
 $cli = new Client();
 
-if ($cli->authorize()) {
-    $cli->report("Client accepted");
-    
-    if($cli->askPassword()) {
-        $cli->report("New Password ok");
-        if ($cli->updatePassword()) {
-            $cli->report("Password updated");
-        }
-        else {
-            $cli->fatal("Password not updated");
-        }
+if($cli->askPassword()) {
+    $cli->report("New Password ok");
+    if ($cli->updatePassword()) {
+        $cli->report("Password updated");
     }
     else {
-        $cli->report("User Input Failed");
+        $cli->fatal("Password not updated");
     }
 }
 else {
-    $cli->fatal("Client rejected");
+    $cli->report("User Input Failed");
 }
 
 ?>

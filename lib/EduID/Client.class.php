@@ -13,9 +13,9 @@ class Client extends ModelFoundation {
 
     protected $paramShort = "c:f:Cxvt";
     protected $paramLong = "";
-    
+
     protected $param;
-    
+
     private $config;
     private $configFile;
     private $configDir;
@@ -30,12 +30,14 @@ class Client extends ModelFoundation {
     private $credentials;
     private $client_id;
 
+    protected $user;
+
     public $curl;
 
     public function __construct() {
-        
+
         $this->setDebugMode(false);
-        
+
         $this->credentials = array(
             "issuer" => "ch.htwchur.eduid.cli",
             "kid"    => "1234test-12",
@@ -49,7 +51,7 @@ class Client extends ModelFoundation {
         if (array_key_exists("v", $this->param)) {
             $this->setDebugMode(true);
         }
-        
+
         if (array_key_exists("C", $this->param)) {
             $this->writeConfig = true;
         }
@@ -58,6 +60,10 @@ class Client extends ModelFoundation {
             $this->remove_config_file("user.json");
         }
         $this->load_config();
+    }
+
+    public function getParam() {
+        return $this->param;
     }
 
     private function load_config() {
@@ -169,7 +175,7 @@ class Client extends ModelFoundation {
                 $this->log("federation service not verified.");
                 return false;
             }
-            
+
             if (!$cliToken) {
                 $cliToken = $this->register_client();
                 if (!$cliToken) {
@@ -179,7 +185,7 @@ class Client extends ModelFoundation {
                 }
                 $this->curl->setMacToken($cliToken);
             }
-                    
+
             $this->curl->setMacToken($cliToken);
 
             if (!$usrToken) {
@@ -204,7 +210,7 @@ class Client extends ModelFoundation {
                 // try again
                 $this->log("user token rejected? " . $this->curl->getStatus());
                 $this->log("user token rejected? " . $this->curl->getLastURI());
-                
+
                 $this->curl->setMacToken($cliToken);
                 $this->curl->setPathInfo("token");
                 $usrToken = $this->auth_with_server();
@@ -215,7 +221,7 @@ class Client extends ModelFoundation {
                 }
             }
             else {
-                $this->log($this->curl->getBody());
+                $this->user = json_decode($this->curl->getBody(), true);
             }
 
             // OK we are good.
@@ -244,7 +250,7 @@ class Client extends ModelFoundation {
                 $token = json_decode($this->curl->getBody(), true);
                 $this->write_config_file($this->curl->getBody(),
                                          $this->configDir . "/user.json",
-                                         true); // always store the user token 
+                                         true); // always store the user token
 
                 return $token;
             }
@@ -324,28 +330,28 @@ class Client extends ModelFoundation {
             }
         }
     }
-    
+
     private function remove_config_file($filename) {
         $cfg = ["/etc/eduid", $_SERVER["HOME"] . "/.eduid"];
-        
+
         if  (array_key_exists("c", $this->param)) {
             $d = rtrim ($this->param["c"], "/");
             array_unshift($cfg,$d);
         }
-        
+
         foreach($cfg as $d) {
             if (file_exists($d . "/" .$filename)) {
                 $this->log("remove $d/$filename");
                 unlink($d . "/" . $filename);
                 break;
-            }    
+            }
         }
     }
-    
+
     public function report($msg) {
         $this->log($msg);
     }
-    
+
     public function fatal($msg) {
         parent::fatal($msg);
         exit(1);

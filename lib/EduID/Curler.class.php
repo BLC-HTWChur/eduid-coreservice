@@ -159,10 +159,27 @@ class Curler {
         curl_close($this->curl);
     }
 
-    public function get() {
+    private function prepareQueryString($data) {
+        $qs = "";
+        $aQ = array();
+
+        if (isset($data) && !empty($data) && is_array($data)) {
+            foreach ($data as $k => $v) {
+                $aQ[] = urlencode($k) . "=" . urlencode($v);
+            }
+            $qs = implode("&",$aQ);
+            if (!empty($qs)) {
+                $qs = "?$qs";
+            }
+        }
+
+        return $qs;
+    }
+
+    public function get($data="") {
         $this->next_method = "GET";
         $this->prepareUri();
-        $c = curl_init($this->next_url);
+        $c = curl_init($this->next_url . $this->prepareQueryString($data));
 
         $this->curl = $c;
 
@@ -212,10 +229,11 @@ class Curler {
     }
 
 
-    public function delete(){
+    public function delete($data=""){
         $this->next_method = "DELETE";
+
         $this->prepareUri();
-        $c = curl_init($this->next_url);
+        $c = curl_init($this->next_url . $this->prepareQueryString($data));
 
         $this->curl = $c;
 

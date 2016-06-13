@@ -10,17 +10,21 @@ class Client extends DBManager {
     }
 
     public function addClient($info) {
-        if (isset(info) && !empty($info)) {
+        if (isset($info) && !empty($info)) {
             $this->client = null;
+            $this->log(json_encode($info));
 
             if ($this->checkMandatoryFields($info, array("client_id", "info"))) {
 
                 $this->findClient($info["client_id"]);
                 if (!$this->client) {
+                    $this->log("create client");
 
                     $info["client_uuid"] = $this->generateUuid();
 
                     $sqlstr = "INSERT INTO clients (client_uuid, client_id, info) values (?, ?, ?)";
+
+                    $this->log(json_encode($info));
 
                     $sth = $this->db->prepare($sqlstr, array("TEXT", "TEXT", "TEXT"));
                     $res = $sth->execute(array($info["client_uuid"],
@@ -38,7 +42,7 @@ class Client extends DBManager {
     }
 
     public function findClient($id) {
-        if (isset($id) && !empty($id) && isstring($id)) {
+        if (isset($id) && !empty($id) && is_string($id)) {
 
             $this->client = null;
             $sqlstr = "select client_uuid, client_id, info from clients where client_id = ?";
@@ -49,7 +53,12 @@ class Client extends DBManager {
             if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
                 $this->client = array();
                 foreach ($row as $k => $v) {
-                    $this->client[$k] = $v;
+                    if ($k == 'info') {
+                        $this->client[$k] = json_decode($v, true);
+                    }
+                    else {
+                        $this->client[$k] = $v;
+                    }
                 }
                 return true;
              }
@@ -115,6 +124,7 @@ class Client extends DBManager {
     }
 
     public function addClientVersion($versionid) {
+
         if ($this->client &&
             isset($versionid) &&
             !empty($versionid) &&
@@ -124,7 +134,10 @@ class Client extends DBManager {
 
             $token = new Token($this->db);
             $vstr  = implode(".", $version);
+
             if (!$token->findTokens(array("client_id" => $vstr))) {
+
+                $this->log("Token does not exist, create a new one");
 
                 $token->addToken(array(
                     "token_type" => "Bearer",
