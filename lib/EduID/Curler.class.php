@@ -2,6 +2,8 @@
 
 namespace EduID;
 
+use Lcobucci\JWT as JWT;
+
 class Curler {
     private $curl;
     private $protocol;
@@ -16,12 +18,16 @@ class Curler {
     private $out_header;
     private $in_header;
     private $mac_token;
+    private $token_type = "mac";
+    private $jwtClaims = array();
 
     private $next_url;
     private $next_method;
 
-    public function __construct($options) {
-
+    public function __construct($options="") {
+        if (empty($options)) {
+                $options = array();
+        }
         if (is_string($options)) {
             // we got a url
             $options = parse_url($options);
@@ -33,6 +39,18 @@ class Curler {
         $this->path_info  = array_key_exists("path_info", $options) ? $options["path_info"] : "";
         $this->param = array();
         $this->out_header = array();
+    }
+
+    public function useMacToken() {
+        $this->token_type = "mac";
+    }
+
+    public function useJwtToken($claims = "") {
+        $this->token_type = "jwt";
+        $this->jwtClaims = array();
+        if (!empty($claims) && is_array($claims)) {
+            $this->jwtClaims = $claims;
+        }
     }
 
     public function setPath($path) {
@@ -106,36 +124,91 @@ class Curler {
     }
 
     private function prepareOutHeader($type="") {
-
         $th = array();
 
         if (!empty($type)) {
             array_push($th, "Content-Type: " . $type);
         }
 
+        $authType = "prepare_auth_" . $this->token_type;
+        if (method_exists($this, $authType)) {
+            $h = $this->$authType();
+            if (!empty($h)) {
+                $th[] = $h;
+            }
+        }
+
+        if (!empty($this->out_header)) {
+            foreach ($this->out_header as $k => $v) {
+                $th[] = $k . ": " . $v;
+            }
+        }
+        if (!empty($th)) {
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, $th);
+        }
+    }
+
+    private function prepare_auth_mac() {
+        $header = "";
+
         if (!empty($this->mac_token)) {
+            $oUri= parse_url($this->next_url);
             // sign mac token
             $signer = $this->getSigner($this->mac_token["mac_algorithm"]);
 
             // generate payload
             $ts = time();
 
-            $payload = $this->next_method . " " . $this->base_url . "/" . $this->path_info . " HTTP/1.1\n";
+            $payload = $this->next_method . " " . $oUri["path"] . " HTTP/1.1\n";
             $payload .= "$ts\n";
-            $payload .= $this->host . "\n";
+            $payload .= $oUri["host"] . "\n";
 
-            $mac = base64_encode($signer->sign($payload, $this->mac_token["mac_key"]));
-            array_push($th, "Authorization: MAC kid=". $this->mac_token["kid"] . ",ts=$ts,mac=" . $mac);
+            $authHeader = array(
+                "kid=" . $this->mac_token["kid"],
+                "ts=$ts",
+            );
+
+            $authHeader[] = "mac=" . base64_encode($signer->sign($payload, $this->mac_token["mac_key"]));
+
+
+            $header = "Authorization: MAC " . implode(',', $authHeader);
         }
 
-        if (!empty($this->out_header)) {
-            foreach ($this->out_header as $k => $v) {
-                array_push($th, $k . ": " . $v);
+        return $header;
+    }
+
+    private function prepare_auth_jwt() {
+        $header = "";
+
+        if (!empty($this->mac_token)) {
+            $jwt = new JWT\Builder();
+
+            $jwt->setIssuer($this->credentials["issuer"]);
+            $jwt->setAudience($this->next_url);
+
+            $jwt->setHeader("kid", $this->mac_token["kid"]);
+
+            foreach ($this->jwtClaims as $c => $v) {
+                if ($c == "subject" || $c = "sub") {
+                    $jwt->setSubject($v);
+                }
+                else {
+                    $jwt->set($c, $v);
+
+                }
             }
+
+            $signer = $this->getSigner($this->mac_token["mac_algorithm"]);
+
+            $jwt->sign($signer,
+                       $this->mac_token["mac_key"]);
+
+            $t = $jwt->getToken();
+
+            $header = "Authorization: Bearer $t";
         }
-        if (!empty($th)) {
-            curl_setopt($this->curl, CURLOPT_HTTPHEADER, $th);
-        }
+
+        return $header;
     }
 
     private function request() {

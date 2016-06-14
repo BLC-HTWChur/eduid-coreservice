@@ -6,9 +6,6 @@ use EduID\ModelFoundation;
 
 use EduID\Curler;
 
-use Lcobucci\JWT as JWT;
-use Lcobucci\JWT\Signer as Signer;
-
 class Client extends ModelFoundation {
 
     protected $paramShort = "c:f:Cxvt";
@@ -183,6 +180,7 @@ class Client extends ModelFoundation {
                     return false;
                     // die("Client refused by server");
                 }
+                $this->curl->useMacToken(); // make explicit that we use MAC headers
                 $this->curl->setMacToken($cliToken);
             }
 
@@ -263,23 +261,11 @@ class Client extends ModelFoundation {
 
     private function register_client() {
         $this->curl->setPathInfo("token");
+        $this->curl->useJwtToken(array(
+            "subject" => $this->client_id,
+            "name"    => $this->credentials["host"]
+        ));
 
-        $jwt = new JWT\Builder();
-
-        $jwt->setIssuer($this->credentials["issuer"]);
-        $jwt->setAudience($this->curl->getUrl());
-        $jwt->setHeader("kid", $this->credentials["kid"]);
-        $jwt->setSubject($this->client_id);
-        $jwt->set("name", $this->credentials["host"]);
-
-        $cn = 'Lcobucci\JWT\Signer\Hmac\Sha256';
-        $signer = new $cn;
-        $jwt->sign($signer,
-                   $this->credentials["key"]);
-
-        $t = $jwt->getToken();
-
-        $this->curl->setHeader(array("Authorization"=> "Bearer $t"));
         $data = array("grant_type" => "client_credentials");
         $this->curl->post(json_encode($data), "application/json");
 
