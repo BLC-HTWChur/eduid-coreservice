@@ -32,12 +32,12 @@ if (isset($serviceName) && !empty($serviceName)) {
         $service = new $serviceName();
     }
     catch (\Exception $e) {
-        $service = new EduID\Service\Error($e->getMessage());
+        $service = new ErrorService(501, $e->getMessage());
     }
 }
 
 if (!isset($service)) {
-    $service = new ErrorService("no service set");
+    $service = new ErrorService(400 , "no service set");
 }
 
 $service->run();
