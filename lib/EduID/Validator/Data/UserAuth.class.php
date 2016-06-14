@@ -11,7 +11,7 @@ class UserAuth extends Validator {
     private $user;
 
     protected function validate() {
-        if (isset($this->data) && !empty($this->data)) {
+        if (!empty($this->data)) {
             if (in_array($this->method, $this->requireEmptyMethod)) {
                 $this->log("Not Data Must Be Sent For " . $this->method);
                 return false;
@@ -29,7 +29,7 @@ class UserAuth extends Validator {
 
             // verify that there is a client token
             $gT = $this->service->getAuthToken();
-            if (!isset($gT) || empty($gT)) {
+            if (empty($gT)) {
                 $this->log("no token found");
                 $this->service->forbidden();
                 return false;

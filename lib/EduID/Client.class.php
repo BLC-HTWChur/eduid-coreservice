@@ -298,7 +298,7 @@ class Client extends ModelFoundation {
     }
 
     private function read_config_file($fileName="") {
-        if (!isset($fileName) || empty($fileName)) {
+        if (empty($fileName)) {
             $fileName = $this->configFile;
         }
 
@@ -313,7 +313,7 @@ class Client extends ModelFoundation {
     }
 
     private function write_config_file($data, $fileName="", $force=false) {
-        if (!isset($fileName) || empty($fileName)) {
+        if (empty($fileName)) {
             $fileName = $this->configFile;
         }
 

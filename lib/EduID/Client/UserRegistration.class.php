@@ -74,7 +74,7 @@ class UserRegistration extends ClientBase {
     }
 
     public function register_user($userInfo) {
-        if (isset($userInfo) && !empty($userInfo)) {
+        if (!empty($userInfo)) {
             $this->curl->setPathInfo("user-profile/federation");
 
             $this->curl->put(json_encode($userInfo), 'application/json');

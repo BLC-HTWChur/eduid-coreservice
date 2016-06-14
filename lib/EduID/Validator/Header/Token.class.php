@@ -43,7 +43,6 @@ class Token extends Validator {
         $headers = getallheaders();
 
         if (array_key_exists("Authorization", $headers) &&
-            isset($headers["Authorization"]) &&
             !empty($headers["Authorization"]))
         {
 
@@ -80,7 +79,7 @@ class Token extends Validator {
     }
 
     public function ignoreTokenTypes($typeList) {
-        if (isset($typeList)) {
+        if (!empty($typeList)) {
             if (!is_array($typeList)) {
                 $typeList = array($typeList);
             }
@@ -93,7 +92,7 @@ class Token extends Validator {
 
     public function acceptTokenTypes($typeList) {
 
-        if (isset($typeList)) {
+        if (!empty($typeList)) {
             if (!is_array($typeList)) {
                 $typeList = array($typeList);
             }
@@ -108,7 +107,7 @@ class Token extends Validator {
     }
 
     public function resetAcceptedTokens($typeList){
-        if (isset($typeList) && !empty($typeList)) {
+        if (!empty($typeList)) {
             if (!is_array($typeList)) {
                 $typeList = array($typeList);
             }
@@ -118,7 +117,7 @@ class Token extends Validator {
     }
 
     public function setAcceptedTokenTypes($typeList){
-        if (isset($typeList) && !empty($typeList)) {
+        if (!empty($typeList)) {
             if (!is_array($typeList)) {
                 $typeList = array($typeList);
             }
@@ -146,8 +145,7 @@ class Token extends Validator {
     }
 
     public function verifyRawToken($rawtoken) {
-        if (isset($rawtoken) &&
-            !empty($rawtoken) &&
+        if (!empty($rawtoken) &&
             $rawtoken == $this->token) {
 
             return true;
@@ -156,9 +154,7 @@ class Token extends Validator {
     }
 
     public function verifyJWTClaim($claim, $value) {
-        if (isset($value) &&
-            !empty($value) &&
-            isset($claim) &&
+        if (!empty($value) &&
             !empty($claim) &&
             isset($this->jwt_token) &&
             $this->jwt_token->getClaim($claim) == $value) {
@@ -170,8 +166,7 @@ class Token extends Validator {
     }
 
     protected function validate() {
-        if (!isset($this->token_type) ||
-            empty($this->token_type)) {
+        if (empty($this->token_type)) {
 
             // nothin to validate
             $this->log("no token type available");
@@ -179,8 +174,7 @@ class Token extends Validator {
             return false;
         }
 
-        if (!isset($this->token) ||
-            empty($this->token)) {
+        if (empty($this->token)) {
 
             // no token to validate
             $this->log("no raw token available");
@@ -207,8 +201,7 @@ class Token extends Validator {
         // This will transform Bearer Tokens accordingly
         $this->extractToken();
 
-        if (!isset($this->token_info["kid"]) ||
-            empty($this->token_info["kid"])) {
+        if (empty($this->token_info["kid"])) {
 
             $this->log("no token id available");
             // no token id
@@ -218,7 +211,7 @@ class Token extends Validator {
         // verify that the token is in our token store
         $this->findToken();
 
-        if (!isset($this->token_key)) {
+        if (empty($this->token_key)) {
             // token not found
             $this->log("no token available");
             return false;
@@ -281,7 +274,7 @@ class Token extends Validator {
     protected function validate_jwt() {
         $alg = $this->jwt_token->getHeader("alg");
 
-        if (!isset($alg) || empty($alg)) {
+        if (empty($alg)) {
             $this->log("reject unprotected jwt");
             return false;
         }
@@ -323,8 +316,7 @@ class Token extends Validator {
     }
 
     protected function validate_mac() {
-        if (!isset($this->token_info["mac"]) ||
-            empty($this->token_info["mac"])) {
+        if (empty($this->token_info["mac"])) {
 
             // token is not signed ignore
             $this->log("token is not signed ignore");
@@ -332,8 +324,7 @@ class Token extends Validator {
         }
 
         // check sequence
-        if (!isset($this->token_info["ts"]) ||
-            empty($this->token_info["ts"])) {
+        if (empty($this->token_info["ts"])) {
 
             // missing timestamp
             $this->log("missing timestamp");
@@ -354,8 +345,7 @@ class Token extends Validator {
 
         if ($this->model->hasTokenValue("seq_nr") &&
             array_key_exists("seq_nr", $this->token_info)) {
-            if (!isset($this->token_info["seq_nr"]) ||
-                empty($this->token_info["seq_nr"])) {
+            if (empty($this->token_info["seq_nr"])) {
 
                 // no sequence provided
                 $this->log("missing seq_nr but requested");
@@ -375,8 +365,7 @@ class Token extends Validator {
         }
 
         if ($this->token_data["seq_nr"] == 1 &&
-            (!isset($this->token_info["access_token"]) ||
-             empty($this->token_info["access_token"]))) {
+            empty($this->token_info["access_token"])) {
 
             if ($this->token_info["access_token"] != $this->token_key) {
                 // invalid token during handshake

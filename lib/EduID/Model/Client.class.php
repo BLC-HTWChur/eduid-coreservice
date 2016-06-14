@@ -42,7 +42,7 @@ class Client extends DBManager {
     }
 
     public function findClient($id) {
-        if (isset($id) && !empty($id) && is_string($id)) {
+        if (!empty($id) && is_string($id)) {
 
             $this->client = null;
             $sqlstr = "select client_uuid, client_id, info from clients where client_id = ?";
@@ -67,7 +67,7 @@ class Client extends DBManager {
     }
 
     public function addClientAdmin($userid) {
-        if ($this->client && isset($userid) && !empty($userid)) {
+        if ($this->client && !empty($userid)) {
             $sqlstr = "insert into clientadmins (user_uuid, client_uuid) values (?,?)";
 
             $sth = $this->db->prepare($sqlstr, array("TEXT", "TEXT"));
@@ -77,7 +77,7 @@ class Client extends DBManager {
     }
 
     public function isClientAdmin($userid) {
-        if ($this->client && isset($userid) && !empty($userid)) {
+        if ($this->client && !empty($userid)) {
             $sqlstr = "select user_uuid from clientadmins where client_uuid = ? and user_uuid = ?";
 
             $sth = $this->db->prepare($sqlstr, array("TEXT", "TEXT"));
@@ -114,7 +114,7 @@ class Client extends DBManager {
     }
 
     public function removeClientAdmin($userid) {
-        if ($this->client && isset($userid) && !empty($userid)) {
+        if ($this->client && !empty($userid)) {
             $sqlstr = "delete from clientadmins where user_uuid =? and client_uuid = ?";
 
             $sth = $this->db->prepare($sqlstr, array("TEXT", "TEXT"));
@@ -126,7 +126,6 @@ class Client extends DBManager {
     public function addClientVersion($versionid) {
 
         if ($this->client &&
-            isset($versionid) &&
             !empty($versionid) &&
             is_string($versionid)) {
 
@@ -152,7 +151,7 @@ class Client extends DBManager {
     }
 
     public function getUserClients($userid) {
-        if (isset($userid) && !empty($userid)) {
+        if (!empty($userid)) {
             $sqlstr = "select c.client_uuid, c.client_id, c.info from clients c, clientadmins a where c.client_uuid = a.client_uuid and user_uuid = ?";
 
             $sth = $this->db->prepare($sqlstr, array("TEXT"));

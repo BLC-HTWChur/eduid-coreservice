@@ -122,7 +122,7 @@ class Token extends Validator {
         }
 
         $kid = trim($this->data["jti"]);
-        if (!isset($kid) || empty($kid)) {
+        if (empty($kid)) {
             $this->log("missing jti");
             $this->service->not_found();
             return false;

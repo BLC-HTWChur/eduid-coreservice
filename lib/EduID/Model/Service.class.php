@@ -54,27 +54,27 @@ class Service extends DBManager{
         $aTypes = array();
         $values = array();
         $aNames = array();
-        
+
         $retval = false;
-        
-        if ($this->checkMandatoryFields($serviceDef, 
-                                        array("service_uuid", 
-                                              "name", 
+
+        if ($this->checkMandatoryFields($serviceDef,
+                                        array("service_uuid",
+                                              "name",
                                               "mainurl",
                                               "idurl",
                                               "rsdurl"))) {
-            
+
             foreach ($aFields as $f) {
                 if (array_key_exists($f, $serviceDef) &&
                     !empty($serviceDef[$f])) {
-    
+
                     $aNames[] = $f;
                     $values[] = $serviceDef[$f];
                     $aTypes[] = "TEXT";
                 }
             }
 
-            $sqlstr = "INSERT INTO services (" . implode(",", $aNames) . 
+            $sqlstr = "INSERT INTO services (" . implode(",", $aNames) .
                       ") VALUES (".
                       implode(",", array_map(function($e){return "?";}, $aNames)) .
                       ")";
@@ -97,7 +97,7 @@ class Service extends DBManager{
         $sqlstr = "SELECT name, mainurl, token_endpoint, info from services s, serviceusers su where su.service_uuid = s.service_uuid and su.user_uuid = ?";
 
         $retval = array();
-        if (isset($user_id) && !empty($user_id)) {
+        if (!empty($user_id)) {
 
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
             $res = $sth->execute(array($user_id));
@@ -142,7 +142,7 @@ class Service extends DBManager{
      * @return bool : true - id has been found, otherwise not.
      */
     public function findServiceById($service_id) {
-        if (isset($service_id) && !empty($service_id)) {
+        if (!empty($service_id)) {
             return $this->findService(array("service_uuid" => $service_id));
         }
     }
@@ -159,7 +159,7 @@ class Service extends DBManager{
      * or a token endpoint. In both cases the service will get loaded.
      */
     public function findServiceByURI($service_uri) {
-        if (isset($service_uri) && !empty($service_uri)) {
+        if (!empty($service_uri)) {
             return $this->findService(array("mainurl"        =>$service_uri,
                                             "token_endpoint" => $service_uri));
         }
@@ -167,24 +167,24 @@ class Service extends DBManager{
     }
 
     public function findServiceByName($name) {
-        if (isset($name) && !empty($name)) {
+        if (!empty($name)) {
             return $this->findService(array("name" => $name));
         }
         return false;
     }
 
     public function findServiceByNamePart($name) {
-        if (isset($name) && !empty($name)) {
+        if (!empty($name)) {
             return $this->findService(array("name" => $name, "like" => "both"));
         }
         return false;
     }
 
     private function findService($options=array()) {
-        $this->service = null;
+        $this->service = array();
         $sqlstr = "SELECT service_uuid, name, mainurl, token_endpoint, rsdurl, info, token from services where ";
 
-        if (isset($options) && !empty($options)) {
+        if (!empty($options)) {
             $filter = array();
             $types  = array();
             $values = array();
@@ -220,7 +220,7 @@ class Service extends DBManager{
                 if ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
                     $service = array();
                     foreach ($row as $f => $v) {
-                        if (isset($v) && !empty($v)) {
+                        if (!empty($v)) {
                             switch ($f) {
                                 case "token":
                                 case "info":
@@ -246,7 +246,7 @@ class Service extends DBManager{
                 $sth->free();
             }
 
-            if (isset($this->service)) {
+            if (!empty($this->service)) {
                 return true;
             }
         }
@@ -255,14 +255,14 @@ class Service extends DBManager{
     }
 
     public function getTokenEndpoint() {
-        if (isset($this->service)) {
+        if (!empty($this->service)) {
             return $this->service["token_endpoint"];
         }
         return null;
     }
 
     public function getSignKey() {
-        if (isset($this->service)) {
+        if (!empty($this->service)) {
             return $this->service["token"]["key"];
         }
         return null;
@@ -294,6 +294,41 @@ class Service extends DBManager{
         }
 
         return $retval;
+    }
+
+    public function trackUser($options) {
+        if (!empty($this->service) &&
+            !empty($options) &&
+            array_key_exists("user_uuid", $options)) {
+
+            if (!array_key_exists("issued_at", $options)) {
+                $options["issued_at"] = now();
+            }
+
+            $types = ["TEXT", "TEXT", "TEXT"];
+            $values = [$options["issued_at"],
+                       $options["user_uuid"],
+                       $this->service["service_uuid"]];
+
+            $sqlstr = "INSERT INTO serviceusers (last_access, user_uuid, service_uuid) values (?, ?, ?)";
+
+            // did the user previously access the service
+            if ($this->isServiceUser($options["user_uuid"])) {
+                $sqlstr = "update serviceusers set last_access = ? where user_uuid = ? and service_uuid = ?";
+            }
+            $sth = $this->db->prepare($sqlstr, $types);
+            $res = $sth->execute($values);
+            $sth->free();
+        }
+    }
+
+    private function isServiceUser($user) {
+        $sqlstr = "select * from serviceusers where user_uuid = ? and service_uuid = ?";
+        $sth = $this->db->prepare($sqlstr, ["TEXT", "TEXT"]);
+        $res = $sth->execute([$user, $this->service["service_uuid"]]);
+        $row = $res->fetchRow();
+        $sth->free();
+        return !empty($row);
     }
 }
 

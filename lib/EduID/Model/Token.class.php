@@ -56,7 +56,7 @@ class Token extends DBManager{
     }
 
     public function setOptions($options) {
-        if (isset($options) && !empty($options)) {
+        if (!empty($options)) {
             if (array_key_exists("expires_in", $options)) {
                 $this->expires_in = $options["expires_in"];
             }
@@ -135,12 +135,11 @@ class Token extends DBManager{
      * used by the OAuth Service to pass data from the TokenValidator
      */
     public function setRootToken($token) {
-        if (isset($token) && !empty($token)) {
+        if (!empty($token)) {
 
             $this->root_token = $token;
             $this->root_token_type = $token["token_type"];
-            if (!isset($this->token_type) ||
-                empty($this->token_type)) {
+            if (empty($this->token_type)) {
 
                 $this->token_type = $this->root_token_type;
             }
@@ -166,8 +165,7 @@ class Token extends DBManager{
     }
 
     public function getUser() {
-        if (isset($this->token) &&
-            !empty($this->token) &&
+        if (!empty($this->token) &&
             !empty($this->token["user_uuid"])) {
 
             $um = new User($this->db);
@@ -183,7 +181,7 @@ class Token extends DBManager{
      * change the type for new tokens
      */
     public function setTokenType($type="Bearer") {
-        if (isset($type) && !empty($type)) {
+        if (!empty($type)) {
             $this->token_type = $type;
         }
     }
@@ -253,7 +251,7 @@ class Token extends DBManager{
         }
 
         if (isset($this->expires_in) &&
-                     $this->expires_in > 0) {
+            $this->expires_in > 0) {
 
             $now = time();
             $newToken["expires"] = $now + $this->expires_in;
@@ -292,14 +290,13 @@ class Token extends DBManager{
         $newToken = $this->newToken($type, $fullToken);
 
         if (isset($this->root_token)) {
-            if (!isset($type) || empty($type)) {
+            if (empty($type)) {
                 $type = $this->root_token_type;
             }
             $newToken["parent_kid"] = $this->root_token["kid"];
         }
 
-        if (isset($type) &&
-            !empty($type) &&
+        if (!empty($type) &&
             (
                 (array_key_exists("user_uuid", $token) && !empty($token["user_uuid"])) ||
                 (array_key_exists("service_uuid", $token) && !empty($token["service_uuid"])) ||
@@ -323,9 +320,8 @@ class Token extends DBManager{
                           "mac_algorithm") as $key) {
 
                 // inherit different approaches from the root token
-                if (isset($this->root_token) &&
+                if (!empty($this->root_token) &&
                     array_key_exists($key, $this->root_token) &&
-                    isset($this->root_token[$key]) &&
                     !empty($this->root_token[$key])) {
                     if ($key === "extra") {
                         $newToken[$key] = json_encode($this->root_token[$key]);
@@ -336,7 +332,6 @@ class Token extends DBManager{
                 }
 
                 if (array_key_exists($key, $token) &&
-                    isset($token[$key]) &&
                     !empty($token[$key])) {
 
                     if ($key === "extra") {
@@ -391,13 +386,13 @@ class Token extends DBManager{
     }
 
     public function consumeRootToken() {
-        if (isset($this->token)) {
+        if (!empty($this->token)) {
             $this->consume_token_db($this->token["parent_kid"]);
         }
     }
 
     public function consumeToken() {
-        if (isset($this->token)) {
+        if (!empty($this->token)) {
             $this->consume_token_db($this->token["kid"]);
         }
     }
@@ -432,7 +427,7 @@ class Token extends DBManager{
         $this->active_token = -1;
         $this->token = null;
 
-        if (isset($options) && !empty($options)) {
+        if (!empty($options)) {
             foreach ($options as $f => $c) {
                 if (array_key_exists($f, $this->dbKeys)) {
                     $aTypes[]    = $this->dbKeys[$f];
@@ -502,9 +497,8 @@ class Token extends DBManager{
     public function findRootToken() {
         $aDBFields = array_keys($this->dbKeys);
 
-        if (isset($this->token) &&
+        if (!empty($this->token) &&
             array_key_exists("parent_kid", $this->token) &&
-            isset($this->token["parent_kid"]) &&
             !empty($this->token["parent_kid"])) {
 
             $sqlstr = "select ".implode(", ", $aDBFields)." from tokens where and token_id = ?";
@@ -538,9 +532,8 @@ class Token extends DBManager{
      * use this function if you need to add a different token information
      */
     public function prepareSubToken($type) {
-        if (isset($type) &&
-            !empty($type) &&
-            isset($this->token)) {
+        if (!empty($type) &&
+            !empty($this->token)) {
 
             $tm = new Token($this->db);
 
@@ -557,14 +550,14 @@ class Token extends DBManager{
      */
     public function addSubToken($type) {
         $tm = $this->prepareSubToken($type);
-        if (isset($tm)) {
+        if ($tm) {
             $tm->addToken(array());
         }
         return $tm;
     }
 
     public function eraseToken() {
-        if (isset($this->token)) {
+        if (!empty($this->token)) {
             $sqlstr = "DELETE FROM tokens WHERE kid = ?";
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
             $res = $sth->execute(array($this->token["kid"]));

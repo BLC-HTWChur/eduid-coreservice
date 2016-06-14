@@ -28,7 +28,7 @@ class ServiceRegistration extends ClientBase {
     public function verify_service($servicehome="") {
         $servicehome = trim($servicehome);
 
-        if(!isset($servicehome) || empty($servicehome)) {
+        if(empty($servicehome)) {
             $servicehome = $this->serviceUrl;
         }
 
@@ -109,7 +109,7 @@ class ServiceRegistration extends ClientBase {
     }
 
     public function register_service($serviceInfo) {
-        if (isset($serviceInfo) && !empty($serviceInfo)) {
+        if (!empty($serviceInfo)) {
             $this->curl->setPathInfo("service-discovery/federation");
 
             // verify service info

@@ -25,7 +25,7 @@ class Base extends \RESTling\Validator {
      * requirements are not met, otherwise the validation will proceed as usual.
      */
     public function allowEmpty($methodList) {
-        if (isset($methodList)) {
+        if (!empty($methodList)) {
             if (!is_array($methodList)) {
                 $methodLis = array($methodList);
             }
@@ -36,7 +36,7 @@ class Base extends \RESTling\Validator {
         }
     }
     public function requireEmpty($methodList) {
-        if (isset($methodList)) {
+        if (!empty($methodList)) {
             if (!is_array($methodList)) {
                 $methodList = array($methodList);
             }
@@ -48,8 +48,7 @@ class Base extends \RESTling\Validator {
     }
 
     protected function checkDataForMethod() {
-        if (isset($this->data) &&
-            !empty($this->data)) {
+        if (!empty($this->data)) {
             if (in_array($this->method, $this->requireEmptyMethod)) {
                 $this->log("No Data Must Be Sent For " . $this->method);
                 return false;
@@ -66,7 +65,7 @@ class Base extends \RESTling\Validator {
     protected function checkAuthToken() {
         // verify that there is a client token
         $gT = $this->service->getAuthToken();
-        if (!isset($gT) || empty($gT)) {
+        if (empty($gT)) {
             $this->log("no token found");
             $this->service->forbidden();
             return false;
@@ -84,8 +83,7 @@ class Base extends \RESTling\Validator {
      * @returns bool - false if any presented field is missing or empty.
      */
     protected function checkDataFields($fieldList) {
-        if(isset($fieldList) &&
-           !empty($fieldList)) {
+        if(!empty($fieldList)) {
 
             foreach ($fieldList as $k) {
                 if (!array_key_exists($k, $this->data) ||

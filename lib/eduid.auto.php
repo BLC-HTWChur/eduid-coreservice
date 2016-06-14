@@ -9,7 +9,7 @@ spl_autoload_register(function ($class) {
 
     $root = array_shift($parts);
 
-    if (isset($root) && !empty($root) && !empty($parts)) {
+    if (!empty($root) && !empty($parts)) {
         // error_log("eduid-auto: OK");
 
         $cpath = array();

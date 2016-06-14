@@ -53,7 +53,7 @@ class User extends DBManager {
     }
 
     public function authenticate( $password ) {
-        if (isset($this->user) && !empty($this->user)) {
+        if (!empty($this->user)) {
 
             $pwd = sha1($this->user["salt"] . $password);
 
@@ -70,8 +70,7 @@ class User extends DBManager {
     public function loadProfileIdentities() {
         $this->profile = null;
 
-        if (isset($this->user) &&
-            !empty($this->user) &&
+        if (!empty($this->user) &&
             !empty($this->user["user_uuid"])) {
 
             $aFields = array("idp_uuid", "userid", "mailaddress", "invalid", "extra");
@@ -101,7 +100,7 @@ class User extends DBManager {
     }
 
     public function getUUID() {
-        if (isset($this->user) && !empty($this->user)) {
+        if (!empty($this->user)) {
             return $this->user["user_uuid"];
         }
         return null;
@@ -116,7 +115,7 @@ class User extends DBManager {
 
     public function isFederationUser() {
         $retval = false;
-        if (isset($this->user) && !empty($this->user)) {
+        if (!empty($this->user)) {
             $sqlstr = "select user_uuid from federation_users where user_uuid = ?";
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
             $res = $sth->execute(array($this->user["user_uuid"]));
@@ -131,11 +130,11 @@ class User extends DBManager {
     }
 
     public function addFederationUser($uuid="") {
-        if (!isset($uuid) || empty($uuid)) {
+        if (empty($uuid) && !empty($this->user)) {
             $uuid = $this->user["user_uuid"];
         }
 
-        if (isset($uuid) && !empty($uuid)) {
+        if (!empty($uuid)) {
 
             $sqlstr = "insert into federation_users (user_uuid) values (?)";
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
@@ -149,8 +148,7 @@ class User extends DBManager {
 
         $core = array("user_password", "user_uuid", "salt");
 
-        if (isset($options) &&
-            !empty($options) &&
+        if (!empty($options) &&
             array_key_exists("user_password", $options)) {
 
             $salt = $this->randomString (10);
@@ -282,8 +280,7 @@ class User extends DBManager {
 
         $id = null;
 
-        if (isset($uuid) &&
-            empty($uuid) ){
+        if (empty($uuid) ){
 
             if ($this->user) {
                 // use existing user identity
@@ -294,8 +291,7 @@ class User extends DBManager {
             }
         }
 
-        if (isset($identity) &&
-            !empty($identity)) {
+        if (!empty($identity)) {
 
             $id = array("user_uuid" => $uuid, "extra" => array());
 

@@ -3,7 +3,7 @@
 namespace EduID;
 
 class ModelFoundation extends \RESTling\Logger {
-    
+
     public static function isAssoc($a) {
         return ($a != array_values($a));
     }
@@ -24,7 +24,7 @@ class ModelFoundation extends \RESTling\Logger {
         }
         return $resstring;
     }
-    
+
     protected function generateUuid() {
         return sprintf( '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
             mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
@@ -34,7 +34,7 @@ class ModelFoundation extends \RESTling\Logger {
             mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
         );
     }
-    
+
     protected function checkMandatoryFields($object, $fields) {
 
         $a = array();
@@ -70,7 +70,7 @@ class ModelFoundation extends \RESTling\Logger {
         }
         return array_reduce($a, "\EduID\ModelFoundation::reduceBools");
     }
-    
+
     protected function filterValidObjects($objList, $fields) {
         $f = function ($e) use ($fields) {
             return $this->checkMandatoryFields($e, $fields);
@@ -89,9 +89,7 @@ class ModelFoundation extends \RESTling\Logger {
 
     // ensures that all attributes are actually present
     protected function ensureAttributes($objList, $attrMap) {
-        if (isset($objList) &&
-            !empty($objList) &&
-            isset($attrMap) &&
+        if (!empty($objList) &&
             !empty($attrMap)) {
 
             $om = function ($obj) use ($attrMap) {
@@ -109,12 +107,10 @@ class ModelFoundation extends \RESTling\Logger {
         }
         return array();
     }
-    
+
     // almost like array_values, but using ordered attributes
     protected function flattenAttributes($objList, $attrMap) {
-        if (isset($objList) &&
-            !empty($objList) &&
-            isset($attrMap) &&
+        if (!empty($objList) &&
             !empty($attrMap)) {
 
             $om = function ($obj) use ($attrMap) {

@@ -36,7 +36,7 @@ class Curler {
     }
 
     public function setPath($path) {
-        if (isset($path) && !empty($path) && is_string($path)) {
+        if (!empty($path) && is_string($path)) {
             $this->base_url = $path;
         }
         else {
@@ -67,22 +67,14 @@ class Curler {
         $this->mac_token = $t;
     }
 
-    private function prepareUri() {
+    private function prepareUri($data) {
         $this->path_info = ltrim($this->path_info, "/");
         $this->next_url  = $this->protocol . "://" . $this->host . $this->base_url;
-        if (isset($this->path_info) && !empty($this->path_info)) {
+        if (!empty($this->path_info)) {
             $this->next_url .= "/" . $this->path_info;
         }
 
-        if (!empty($this->param)) {
-            $tp = array();
-            foreach ($this->param as $k => $v) {
-                array_push($tp, urlencode($k) . "=" . urlencode($v));
-            }
-            if (!empty($tp)) {
-                $this->next_url .= "?". implode("&", $tp);
-            }
-        }
+        $this->next_url .= $this->prepareQueryString($data);
     }
 
     private function getSigner($alg) {
@@ -121,7 +113,7 @@ class Curler {
             array_push($th, "Content-Type: " . $type);
         }
 
-        if (isset($this->mac_token) && !empty($this->mac_token)) {
+        if (!empty($this->mac_token)) {
             // sign mac token
             $signer = $this->getSigner($this->mac_token["mac_algorithm"]);
 
@@ -163,10 +155,17 @@ class Curler {
         $qs = "";
         $aQ = array();
 
-        if (isset($data) && !empty($data) && is_array($data)) {
+        if (!empty($data) && is_array($data)) {
             foreach ($data as $k => $v) {
                 $aQ[] = urlencode($k) . "=" . urlencode($v);
             }
+        }
+        if (!empty($this->param) && is_array($this->param)) {
+            foreach ($this->param as $k => $v) {
+                $aQ[] = urlencode($k) . "=" . urlencode($v);
+            }
+        }
+        if (!empty($aQ)) {
             $qs = implode("&",$aQ);
             if (!empty($qs)) {
                 $qs = "?$qs";
@@ -178,8 +177,8 @@ class Curler {
 
     public function get($data="") {
         $this->next_method = "GET";
-        $this->prepareUri();
-        $c = curl_init($this->next_url . $this->prepareQueryString($data));
+        $this->prepareUri($data);
+        $c = curl_init($this->next_url);
 
         $this->curl = $c;
 
@@ -232,8 +231,8 @@ class Curler {
     public function delete($data=""){
         $this->next_method = "DELETE";
 
-        $this->prepareUri();
-        $c = curl_init($this->next_url . $this->prepareQueryString($data));
+        $this->prepareUri($data);
+        $c = curl_init($this->next_url);
 
         $this->curl = $c;
 

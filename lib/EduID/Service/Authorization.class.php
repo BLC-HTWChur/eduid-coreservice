@@ -8,6 +8,7 @@ namespace EduID\Service;
 use EduID\ServiceFoundation;
 use EduID\Validator\Data\UserAuth;
 use EduID\Model\User;
+use EduID\Model\Service as ServiceModel;
 
 use Lcobucci\JWT as JWT;
 use Lcobucci\JWT\Signer as Signer;
@@ -141,7 +142,7 @@ class AuthorizationService extends ServiceFoundation {
         if (isset($user)) {
 
             // find service info in the federation
-            $service = new ServiceManagemer($this->db);
+            $service = new ServiceModel($this->db);
 
             // the redirect URI must point to a service within the federation
             if ($service->findByURI($this->inputData["redirect_uri"])) {
@@ -159,13 +160,14 @@ class AuthorizationService extends ServiceFoundation {
 
                 $token = $tm->getToken();
 
+
                 $jwt = new JWT\Builder();
 
                 $jwt->setIssuer('https://eduid.htwchur.ch');
 
                 $jwt->setAudience($service->getTokenEndpoint()); // the client MUST sent the endpoint
                 $jwt->setId($token["kid"]);
-                $jwt->setIssuedAt(time());
+                $jwt->setIssuedAt($token["issued_at"]);
                 $jwt->setExpiration(time() + 3600); //1h valid - FIXME make configurable
 
                 $jwt->setSubject($profiles[0]["userid"]); // eduid ID
@@ -177,6 +179,9 @@ class AuthorizationService extends ServiceFoundation {
                 }
 
                 $jwt->sign($signer, $service->tokenKey("mac_key"));
+
+                // now record that the service has been accessed
+                $service->trackUser($token);
 
                 $this->data = array("token" => (string) $jwt->getToken());
             }
