@@ -159,7 +159,11 @@ class Curler {
             // generate payload
             $ts = time();
 
-            $payload = $this->next_method . " " . $oUri["path"] . " HTTP/1.1\n";
+            $payload = $this->next_method . " " . $oUri["path"];
+            if (array_key_exists("query", $oUri)) {
+                $payload .= "?". $oUri["query"];
+            }
+            $payload .= " HTTP/1.1\n";
             $payload .= "$ts\n";
             $payload .= $oUri["host"] . "\n";
 
@@ -169,7 +173,6 @@ class Curler {
             );
 
             $authHeader[] = "mac=" . base64_encode($signer->sign($payload, $this->mac_token["mac_key"]));
-
 
             $header = "Authorization: MAC " . implode(',', $authHeader);
         }
