@@ -24,13 +24,70 @@ class BasicTest extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf("EduID\Curler", $c, "Curler Failed");
     }
 
-    public function testVerifyFederationService() {
-        // federation service
+    public function testInitStack() {
         $stack = (object)[];
 
-        $fedService = "http://192.168.56.102/eduid/eduid.php";
+        $stack->serviceUri = "http://192.168.56.102/eduid/eduid.php";
 
-        $stack->curl = new EduID\Curler($fedService);
+        $clientToken = '{"access_key":"N8JHVh4mPhdH06GEstFZPHlaKrA4kBpX.Zwk7pxKw.kwvR1Lay","kid":"AP6LPG3h_c","mac_algorithm":"HS256","mac_key":"IP-9Dmj__FbX7lir3043xvGt8n-1ur437U2_6b1wG3iCdqV7qPZLax69IVZ3cTW9BOzyPqUni2RmiBiyh8aiu6g4R6WUOHSgnhD2","token_type":"Bearer","seq_nr":0,"client_id":"ch.eduid.cli-test.1","extra":{"os":"cli"},"issued_at":1465988226}';
+
+        $stack->clientToken = json_decode($clientToken, true);
+        $stack->clientId    = $this->generateUuid();
+
+        // users:
+        // preinstalled
+        $stack->adminUser = (object)array(
+            "username" => 'cli-admin@eduid.ch',
+            "password" => 'test123'
+        );
+
+        // created
+        $stack->basicUser = array(
+            "mailaddress" => "test.user@eduid.ch",
+            "given_name"=> "Test",
+            "family_name"=> "EduID-User",
+            "name"=> "Test EduID-User",
+            "user_password" => "helloworld"
+        );
+
+        // created
+        $stack->otherUser = array(
+            "mailaddress" => "test.user-b@eduid.ch",
+            "given_name"=> "Test B",
+            "family_name"=> "EduID-User",
+            "name"=> "Test B EduID-User",
+            "user_password" => "helloworld"
+        );
+
+        // MUST NOT be created
+        $stack->noUser = array(
+            "mailaddress"   => "test.user2@eduid.ch",
+            "given_name"    => "Test2",
+            "family_name"   => "EduID-User",
+            "name"          => "Test2 EduID-User",
+            "user_password" => "helloworld"
+        );
+
+        // created
+        $stack->client = array(
+            "client_id" => "ch.eduid.test-cli",
+            "info" => array("os"=> "test")
+        );
+
+        // MUST NOT be created
+        $stack->noClient = array(
+            "client_id" => "ch.eduid.test-nocli",
+            "info" => array("os"=> "failed test")
+        );
+
+        return $stack;
+    }
+
+    /**
+     * @depends testInitStack
+     */
+    public function testVerifyFederationService($stack) {
+        $stack->curl = new EduID\Curler($stack->serviceUri);
         $stack->curl->get();
 
         // forbid direct calls.
@@ -41,7 +98,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @depends testVerifyFederationService
+     * @depends testInitStack
      */
     public function testVerifyBadEndpoint($stack) {
         $stack->curl->setPathInfo("funny-endpoint");
@@ -58,10 +115,6 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testVerifyFederationService
      */
     public function testClientCrendentialsAuth($stack) {
-        $clientToken = '{"access_key":"ErwxcbK9K7XSaQX.C3rNiniV0Gb_Ijzf.VBAWd.xamfa33.wWQ","kid":"944hO3PQuo","mac_algorithm":"HS256","mac_key":"ZTupCWRq-hL-uS-mKqHx7Fr-N6TsKdF_X1QqLxEBDisY1i0AzGZveflSa5aK8GcUySaaeFBHPVxF4x8s5WN92YR2SSBQpE_NnANr","token_type":"Bearer","client_id":"ch.eduid.cli-test.1","issued_at":1465936363}';
-
-        $stack->clientToken = json_decode($clientToken, true);
-        $stack->clientId    = $this->generateUuid();
 
         $stack->curl->setMacToken($stack->clientToken);
         $stack->curl->setPathInfo("token");
@@ -91,11 +144,6 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testClientCrendentialsAuth
      */
     public function testPasswordAuth($stack) {
-        $stack->adminUser = (object)array(
-            "username" => 'cli-admin@eduid.ch',
-            "password" => 'test123'
-        );
-
         $data = array("grant_type" => "password",
                       "username"   => $stack->adminUser->username,
                       "password"   => $stack->adminUser->password);
@@ -173,20 +221,14 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testPasswordAuth
      */
     public function testAddUser($stack) {
-        $user = array(
-            "mailaddress" => "test.user@eduid.ch",
-            "given_name"=> "Test",
-            "family_name"=> "EduID-User",
-            "name"=> "Test EduID-User",
-            "user_password" => "helloworld"
-        );
+        $stack->curl->setMacToken($stack->adminToken);
         $stack->curl->setPathInfo("user-profile/federation");
 
-        $stack->curl->put(json_encode($user), 'application/json');
+        $stack->curl->put(json_encode($stack->basicUser), 'application/json');
 
         $this->assertEquals(204,
                             $stack->curl->getStatus(),
-                            'federation service rejected password update');
+                            'federation service rejected new user');
         $this->assertEmpty($stack->curl->getBody(), 'Body is Empty!');
 
         // login as user
@@ -194,19 +236,30 @@ class BasicTest extends PHPUnit_Framework_TestCase
         $stack->curl->setPathInfo("token");
 
         $data = array("grant_type" => "password",
-                      "username"   => $user["mailaddress"],
-                      "password"   => $user["user_password"]);
+                      "username"   => $stack->basicUser["mailaddress"],
+                      "password"   => $stack->basicUser["user_password"]);
 
         $stack->curl->post(json_encode($data), "application/json");
         $this->assertEquals(200,
                             $stack->curl->getStatus(),
                             'federation service rejected credentials');
 
-        $stack->basicUser = $user;
-
         $this->assertNotEmpty($stack->curl->getBody(), 'Body is Empty!');
 
         $stack->basicToken = json_decode($stack->curl->getBody(), true);
+
+        // if we got here, create a second user for grant testing
+        $stack->curl->setMacToken($stack->adminToken);
+
+        $stack->curl->setPathInfo("user-profile/federation");
+
+        $stack->curl->put(json_encode($stack->otherUser), 'application/json');
+
+        $this->assertEquals(204,
+                            $stack->curl->getStatus(),
+                            'federation service rejected other new user');
+        $this->assertEmpty($stack->curl->getBody(), 'Body is Empty!');
+
         return $stack;
     }
 
@@ -214,23 +267,29 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testAddUser
      */
     public function testAddUserNonAdmin($stack) {
-        $user = array(
-            "mailaddress"   => "test.user2@eduid.ch",
-            "given_name"    => "Test2",
-            "family_name"   => "EduID-User",
-            "name"          => "Test2 EduID-User",
-            "user_password" => "helloworld"
-        );
-
         $stack->curl->setMacToken($stack->basicToken);
 
         $stack->curl->setPathInfo("user-profile/federation");
 
-        $stack->curl->put(json_encode($user), 'application/json');
+        $stack->curl->put(json_encode($stack->noUser), 'application/json');
 
         $this->assertEquals(403,
                             $stack->curl->getStatus(),
-                            'federation service did not propertly reject the new uesr '. $stack->curl->getStatus());
+                            'federation service did not propertly reject the new user '. $stack->curl->getBody());
+
+        // login as user
+        $stack->curl->setMacToken($stack->instanceToken);
+        $stack->curl->setPathInfo("token");
+
+        $data = array("grant_type" => "password",
+                      "username"   => $stack->noUser["mailaddress"],
+                      "password"   => $stack->noUser["user_password"]);
+
+        $stack->curl->post(json_encode($data), "application/json");
+        $this->assertEquals(401,
+                            $stack->curl->getStatus(),
+                            'federation service rejected credentials');
+
         return $stack;
     }
 
@@ -257,13 +316,9 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testAddUser
      */
     public function testAddClient($stack) {
-         $client = array(
-            "client_id" => "ch.eduid.test-cli",
-            "info" => array("os"=> "test")
-        );
         $stack->curl->setMacToken($stack->adminToken);
         $stack->curl->setPathInfo("client");
-        $stack->curl->put(json_encode($client), "application/json");
+        $stack->curl->put(json_encode($stack->client), "application/json");
 
         $this->assertEquals(200,
                             $stack->curl->getStatus(),
@@ -282,21 +337,18 @@ class BasicTest extends PHPUnit_Framework_TestCase
                                  "client_id is missing");
         $this->assertNotEmpty($tst["client_uuid"],
                               "client_uuid is empty");
-        $this->assertEquals($client["client_id"],
+
+        $this->assertEquals($stack->client["client_id"],
                             $tst["client_id"],
                             "mismatching in and output");
 
-        $stack->tstCliId = $tst["client_uuid"];
+        $stack->tstCliId = $tst["client_id"];
         return $stack;
     }
     /**
      * @depends testAddUser
      */
     public function testAddClientUser($stack) {
-         $client = array(
-            "client_id" => "ch.eduid.test-cli",
-            "info" => array("os"=> "test")
-        );
         $stack->curl->setMacToken($stack->basicToken);
         $stack->curl->setPathInfo("client");
         $stack->curl->put(json_encode($client), "application/json");
@@ -317,8 +369,10 @@ class BasicTest extends PHPUnit_Framework_TestCase
         $data = array("user_mail" => $stack->basicUser["mailaddress"]);
         $stack->curl->setMacToken($stack->adminToken);
 
-        $stack->curl->setPathInfo("client/user/".$this->tstCliId);
+        $stack->curl->setPathInfo("client/user/" . $stack->tstCliId);
+
         $stack->curl->put(json_encode($data), "application/json");
+
         $this->assertEquals(204,
                             $stack->curl->getStatus(),
                             'federation service did not respond correctly' .
@@ -347,20 +401,56 @@ class BasicTest extends PHPUnit_Framework_TestCase
         return $stack;
     }
 
+     /**
+     * @depends testGrantClientAdmin
+     */
+    public function testAddClientVersionUser($stack) {
+        return $stack;
+    }
+
+    /**
+     * @depends testAddClientVersionUser
+     */
+    public function testRevokeClientAdmin($stack) {
+        $data = array("user_mail" => $stack->basicUser["mailaddress"]);
+
+        $stack->curl->setMacToken($stack->adminToken);
+
+        $stack->curl->setPathInfo("client/user/".$stack->tstCliId);
+
+        $stack->curl->delete($data);
+        $this->assertEquals(410,
+                            $stack->curl->getStatus(),
+                            'federation service did not revoke the grant');
+
+        $this->assertEmpty($stack->curl->getBody(), 'Body is not Empty!');
+
+        $stack->curl->setMacToken($stack->basicToken);
+        $stack->curl->setPathInfo("client");
+
+        $stack->curl->get();
+
+        $b = json_decode($stack->curl->getBody(), true);
+
+        $this->assertEmpty($b, "user should have no priviliges left");
+
+
+        return $stack;
+    }
+
     /**
      * @depends testRevokeClientAdmin
      */
     public function testGrantClientUser($stack) {
         // we need a special user that!
-        $data = array("user_mail" => $stack->basicUser["mailaddress"]);
+        $data = array("user_mail" => $stack->otherUser["mailaddress"]);
         $stack->curl->setMacToken($stack->basicToken);
 
         $stack->curl->setPathInfo("client/user/".$stack->tstCliId);
         $stack->curl->put(json_encode($data), "application/json");
         $this->assertEquals(403,
                             $stack->curl->getStatus(),
-                            'federation service did not respond correctly' .
-                            $stack->curl->getStatus());
+                            'federation service did not respond correctly');
 
         $this->assertEmpty($stack->curl->getBody(), 'Body is not Empty!');
         return $stack;
@@ -370,39 +460,32 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testRevokeClientAdmin
      */
     public function testRevokeClientUser($stack) {
-        // we need a special user that!
-        $data = array("user_mail" => $stack->basicUser["mailaddress"]);
+        // temporarily add the other user
+        $data = array("user_mail" => $stack->otherUser["mailaddress"]);
+        $stack->curl->setMacToken($stack->adminToken);
+
+        $stack->curl->setPathInfo("client/user/" . $stack->tstCliId);
+
+        $stack->curl->put(json_encode($data), "application/json");
+
+        $this->assertEquals(204,
+                            $stack->curl->getStatus(),
+                            'federation service did not respond correctly' .
+                            $stack->curl->getStatus());
+
+        // swith user and try to revoke
+        $stack->curl->setMacToken($stack->basicToken);
+        $data = array("user_mail" => $stack->otherUser["mailaddress"]);
 
         $stack->curl->setMacToken($stack->basicToken);
         $stack->curl->setPathInfo("client/user/" . $stack->tstCliId);
 
-        $stack->curl->put(json_encode($data), "application/json");
+        $stack->curl->delete($data);
         $this->assertEquals(403,
                             $stack->curl->getStatus(),
                             'federation service did not respond correctly');
 
         $this->assertEmpty($stack->curl->getBody(), 'Body is not Empty!');
-        return $stack;
-    }
-
-
-
-    /**
-     * @depends testAddClientVersionUser
-     */
-    public function testRevokeClientAdmin($stack) {
-        $data = array("user_mail" => $stack->basicUser["mailaddress"]);
-
-        $stack->curl->setMacToken($stack->adminToken);
-        $stack->curl->setPathInfo("client/user/".$stack->tstCliId);
-
-        $stack->curl->put(json_encode($data), "application/json");
-        $this->assertEquals(204,
-                            $stack->curl->getStatus(),
-                            'federation service did not respond correctly');
-
-        $this->assertEmpty($stack->curl->getBody(), 'Body is not Empty!');
-        $this->assertEquals(1,0, 'break here!');
         return $stack;
     }
 
