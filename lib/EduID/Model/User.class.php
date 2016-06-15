@@ -138,7 +138,7 @@ class User extends DBManager {
 
             $sqlstr = "insert into federation_users (user_uuid) values (?)";
             $sth = $this->db->prepare($sqlstr, array("TEXT"));
-            $res = $sth->execute(array($userid));
+            $res = $sth->execute(array($uuid));
 
             $sth->free();
         }

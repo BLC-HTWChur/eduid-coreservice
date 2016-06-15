@@ -19,7 +19,7 @@ class Error extends \RESTling\Logger {
         $this->mark("Start Error Service");
         $this->log("ErrorService::__construct - FATAL ERROR: Error Service launched");
 
-        $this->log('internal message: ' . $msg);
+        $this->log("internal message ($code): " . $msg);
     }
 
     public function run() {
