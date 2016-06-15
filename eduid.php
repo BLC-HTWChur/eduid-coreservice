@@ -20,7 +20,8 @@ if(array_key_exists("PATH_INFO", $_SERVER)) {
     $serviceName = array_shift($pi);
 }
 
-if (isset($serviceName) && !empty($serviceName)) {
+$service;
+if (!empty($serviceName)) {
 
     $serviceName = trim($serviceName);
     $ts = explode("-", $serviceName);
@@ -28,18 +29,14 @@ if (isset($serviceName) && !empty($serviceName)) {
 
     $serviceName .= implode("", array_map(function($v) {return ucfirst(strtolower($v));}, $ts));
 
-    try {
-        $service = new $serviceName();
-    }
-    catch (\Exception $e) {
-        $service = new ErrorService(501, $e->getMessage());
-    }
+    $service = new $serviceName();
 }
 
 if (!isset($service)) {
-    $service = new ErrorService(400 , "no service set");
+    (new ErrorService(400 , "no service set"))->run();
 }
-
-$service->run();
+else {
+    $service->run();
+}
 
 ?>
