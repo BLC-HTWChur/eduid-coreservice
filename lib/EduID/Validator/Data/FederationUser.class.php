@@ -24,7 +24,7 @@ class FederationUser extends Validator {
         $this->user = $this->service->getTokenUser();
 
         if (!$this->check_methods()) {
-            $this->service->forbidden();
+            $this->log("user " . $this->user->getUUID() . " no accepted");
             return false;
         }
         return true;
@@ -37,6 +37,19 @@ class FederationUser extends Validator {
             }
             return false;
         }
+        return true;
+    }
+
+    public function error() {
+        if (!$this->isValid())
+        {
+            // return authentication required by default
+            $this->service->forbidden();
+            return "";
+        }
+    }
+
+    public function mandatory() {
         return true;
     }
 }

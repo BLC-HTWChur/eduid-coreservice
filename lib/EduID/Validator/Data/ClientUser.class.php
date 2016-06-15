@@ -18,10 +18,10 @@ class ClientUser extends Validator {
         return $this->user;
     }
 
-
     public function validate() {
         $this->user = $this->service->getTokenUser();
 
+        $uid = $this->user->getUUID();
         $cm = new ClientModel($this->db);
 
         if (!in_array($this->operation, array("get", "put"))) {
@@ -36,9 +36,10 @@ class ClientUser extends Validator {
                     return false;
                 }
 
-                if (!$cm->isClientAdmin($this->user->getUUID()) &&
+                if (!$cm->isClientAdmin($uid) &&
                     !$this->user->isFederationUser()) {
                     $this->log("active user is neither client admin or sys admin");
+                    $this->service->forbidden();
                     return false;
                 }
 
@@ -50,20 +51,53 @@ class ClientUser extends Validator {
 
                 if (in_array($this->operation, array("put_user", "delete_user"))) {
 
-                    if (!array_key_exists("user_mail", $this->data)) {
+                    $data = $this->data;
+
+                    if (!empty($this->param)) {
+                        $data = $this->param;
+                    }
+
+                    if (empty($data)) {
+                        $this->log("grant parameters missing");
+                        return false;
+                    }
+
+                    $this->user = null;
+                    if (!array_key_exists("user_mail", $data)) {
                         $this->log("username not found");
+                        // bad request
                         return false;
                     }
 
                     $um = new UserModel($this->db);
-                    $this->log(">> user mail = " . $this->data["user_mail"]);
-                    if (!$um->findByMailAddress($this->data["user_mail"])) {
+                    if (!$um->findByMailAddress($data["user_mail"])) {
+                        $this->log("user not found " . $data["user_mail"]);
                         $this->service->not_found();
                         return false;
                     }
-                    $this->log($um->getUUID());
+
+                    if ($uid == $um->getUUID()){
+                        // MUST NOT HAPPEN
+                        $this->log("user tries to the grant him/her self");
+                        $this->service->no_content();
+                        return false;
+                    }
+
+                    if ($this->operation != "delete_user" &&
+                        $cm->isClientAdmin($um->getUUID())) {
+
+                        $this->log("new user is already an admin");
+                        $this->service->no_content();
+                        return false;
+                    }
+
+                    // $this->log($um->getUUID());
                     $this->user = $um;
                 }
+            }
+            else {
+                $this->log("empty path");
+                return false;
             }
         }
         else if ($this->operation == "put") {
@@ -75,7 +109,6 @@ class ClientUser extends Validator {
         }
 
         $this->client = $cm;
-
         return true;
     }
 }

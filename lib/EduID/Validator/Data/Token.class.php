@@ -106,7 +106,7 @@ class Token extends Validator {
 
         if (!$this->user->findByMailAddress($this->data["username"])) {
             $this->log("user not found");
-            $this->service->forbidden();
+            $this->service->authentication_required();
             return false;
         }
         return true;
