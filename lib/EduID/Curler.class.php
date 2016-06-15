@@ -85,7 +85,7 @@ class Curler {
         $this->mac_token = $t;
     }
 
-    private function prepareUri($data) {
+    private function prepareUri($data="") {
         $this->path_info = ltrim($this->path_info, "/");
         $this->next_url  = $this->protocol . "://" . $this->host . $this->base_url;
         if (!empty($this->path_info)) {
@@ -132,7 +132,7 @@ class Curler {
 
         $authType = "prepare_auth_" . $this->token_type;
         if (method_exists($this, $authType)) {
-            $h = $this->$authType();
+            $h = call_user_func(array($this,$authType));
             if (!empty($h)) {
                 $th[] = $h;
             }
@@ -183,20 +183,23 @@ class Curler {
         if (!empty($this->mac_token)) {
             $jwt = new JWT\Builder();
 
-            $jwt->setIssuer($this->credentials["issuer"]);
+            $jwt->setIssuer($this->mac_token["client_id"]);
             $jwt->setAudience($this->next_url);
 
             $jwt->setHeader("kid", $this->mac_token["kid"]);
 
-            foreach ($this->jwtClaims as $c => $v) {
-                if ($c == "subject" || $c = "sub") {
-                    $jwt->setSubject($v);
-                }
-                else {
-                    $jwt->set($c, $v);
+            if (!empty($this->jwtClaims)) {
+                foreach ($this->jwtClaims as $c => $v) {
+                    if ($c == "subject" || $c == "sub") {
+                        $jwt->setSubject($v);
+                    }
+                    else {
+                        $jwt->set($c, $v);
 
+                    }
                 }
             }
+
 
             $signer = $this->getSigner($this->mac_token["mac_algorithm"]);
 

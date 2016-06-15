@@ -35,6 +35,7 @@ class Client extends ModelFoundation {
 
         $this->setDebugMode(false);
 
+        // use the actual token reported from the service
         $this->credentials = array(
             "issuer" => "ch.htwchur.eduid.cli",
             "kid"    => "1234test-12",
@@ -184,6 +185,7 @@ class Client extends ModelFoundation {
                 $this->curl->setMacToken($cliToken);
             }
 
+            $this->curl->useMacToken();
             $this->curl->setMacToken($cliToken);
 
             if (!$usrToken) {
@@ -261,6 +263,7 @@ class Client extends ModelFoundation {
 
     private function register_client() {
         $this->curl->setPathInfo("token");
+        // client_credentials expects a JWT
         $this->curl->useJwtToken(array(
             "subject" => $this->client_id,
             "name"    => $this->credentials["host"]
