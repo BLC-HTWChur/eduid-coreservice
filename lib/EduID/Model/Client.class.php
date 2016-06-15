@@ -61,8 +61,9 @@ class Client extends DBManager {
                     }
                 }
                 return true;
-             }
+            }
         }
+
         return false;
     }
 

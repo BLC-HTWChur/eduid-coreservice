@@ -17,14 +17,12 @@ class Client extends ServiceFoundation {
     }
 
     private function getClient() {
+        if (!$this->clientModel &&
+            $this->clientValidator) {
+            $this->clientModel = $this->clientValidator->getClient();
+        }
         if (!$this->clientModel) {
-            if ($this->clientValidator) {
-                $this->clientModel = $this->clientValidator->getClient();
-            }
-
-            if (!$this->clientModel) {
-                $this->clientModel= new ClientModel($this->db);
-            }
+            $this->clientModel= new ClientModel($this->db);
         }
 
         return $this->clientModel;
@@ -46,7 +44,6 @@ class Client extends ServiceFoundation {
 
     protected function put() {
         // new client
-        $this->log("add new client");
         $tu = $this->getTokenUser();
 
         $cm = $this->getClient();
@@ -58,36 +55,36 @@ class Client extends ServiceFoundation {
 
     protected function post() {
         // create new version
-        $this->log("add new client version " . $this->inputData["version_id"]);
         $cm = $this->getClient();
 
         $this->data = $cm->addClientVersion($this->inputData["version_id"]);
     }
 
     protected function get_user() {
-        $this->log("get client admins");
         $cm = $this->getClient();
 
         $this->data = $cm->getClientAdminList();
     }
 
     protected function put_user() {
-        $this->log("add client admin");
-
         $cm = $this->getClient();
         $um = $this->clientValidator->getUser();
-        $this->log("MARK". $um->getUUID());
 
         $cm->addClientAdmin($um->getUUID());
     }
 
     protected function delete_user() {
-        $this->log("remove client admin");
         $cm = $this->getClient();
+        $um = $this->clientValidator->getUser();
 
         // we have a client and a new version
-
-        $cm->removeClientAdmin($this->clientValidator->getUser()->getUUID());
+        if ($um && $cm) {
+            $cm->removeClientAdmin($um->getUUID());
+            $this->gone();
+        }
+        else {
+            $this->bad_request();
+        }
     }
 }
 
