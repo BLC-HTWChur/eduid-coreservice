@@ -206,6 +206,18 @@ class Token extends DBManager{
         return false;
     }
 
+    public function checkTokenValues($valueList) {
+        if ($this->token) {
+            if(!empty($valueList) &&
+               is_array($valueList)) {
+
+                return $this->checkMandatoryFields($this->token, $valueList);
+            }
+            return true;
+        }
+        return false;
+    }
+
     public function useSequence() {
         $this->use_sequence = true;
     }

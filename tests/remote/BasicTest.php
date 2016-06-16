@@ -148,6 +148,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
                       "username"   => $stack->adminUser->username,
                       "password"   => $stack->adminUser->password);
 
+        $stack->curl->setPathInfo("token");
         $stack->curl->post(json_encode($data), "application/json");
 
         $this->assertEquals(200,
@@ -166,6 +167,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testPasswordAuth
      */
     public function testUserProfile($stack) {
+        $stack->curl->setMacToken($stack->adminToken);
 
         $stack->curl->setPathInfo("user-profile");
         $stack->curl->get();
@@ -181,6 +183,34 @@ class BasicTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($ud[0]["extra"]["name"],
                             "cli admin",
                             "wrong user profile returned");
+        return $stack;
+    }
+
+    /**
+     * @depends testPasswordAuth
+     */
+    public function testUserProfileJWT($stack) {
+        $stack->curl->setMacToken($stack->adminToken);
+
+        $stack->curl->useJwtToken();
+
+        $stack->curl->setPathInfo("user-profile");
+        $stack->curl->get();
+
+        $this->assertEquals(200,
+                            $stack->curl->getStatus(),
+                            'federation service rejected user token');
+
+        $this->assertNotEmpty($stack->curl->getBody(), 'Body is Empty!');
+
+        $ud = json_decode($stack->curl->getBody(), true);
+
+        $this->assertEquals($ud[0]["extra"]["name"],
+                            "cli admin",
+                            "wrong user profile returned");
+
+        $stack->curl->useMacToken();
+
         return $stack;
     }
 

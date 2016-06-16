@@ -175,17 +175,8 @@ class Token extends Validator {
         }
 
         if (empty($this->token)) {
-
             // no token to validate
             $this->log("no raw token available");
-            return false;
-        }
-
-        $fname = "validate_" . strtolower($this->token_type);
-
-        // make authorization scheme validation more flexible
-        if (!method_exists($this, $fname)) {
-            $this->log("authorization method not supported");
             return false;
         }
 
@@ -201,17 +192,29 @@ class Token extends Validator {
         // This will transform Bearer Tokens accordingly
         $this->extractToken();
 
-        if (empty($this->token_info["kid"])) {
+        if (empty($this->token_info)) {
+            $this->log("no token found");
+            return false;
+        }
 
+        if (empty($this->token_info["kid"])) {
             $this->log("no token id available");
             // no token id
+            return false;
+        }
+
+        $fname = "validate_" . strtolower($this->token_info["token_type"]);
+
+        // make authorization scheme validation more flexible
+        if (!method_exists($this, $fname)) {
+            $this->log("authorization method not supported");
             return false;
         }
 
         // verify that the token is in our token store
         $this->findToken();
 
-        if (empty($this->token_key)) {
+        if (empty($this->token_data)) {
             // token not found
             $this->log("no token available");
             return false;
@@ -223,7 +226,7 @@ class Token extends Validator {
         }
 
         if (!empty($this->accept_type) &&
-            !in_array($this->token_type, $this->accept_type)) {
+            !in_array($this->token_data["token_type"], $this->accept_type)) {
             $this->log("not accepted token type. Given type '" . $this->token_type . "'");
             return false;
         }
@@ -247,18 +250,14 @@ class Token extends Validator {
 //            return false;
 //        }
 
+        if (!$this->model->checkTokenValues($this->requireUUID)) {
+            $this->log("required referece is missing");
+            return false;
+        }
+
         // at this point we have to increase the sequence
         if ($this->token_data["seq_nr"] > 0) {
             $this->model->sequenceStep();
-        }
-
-        // this logic should be part of token model
-
-        foreach ($this->requireUUID as $id) {
-            if(!$this->model->hasTokenValue($id)) {
-                $this->log("required referece is missing");
-                return false;
-            }
         }
 
         return true;
@@ -439,6 +438,8 @@ class Token extends Validator {
     private function extractToken() {
         $this->token_info = array();
 
+        $this->token_info["token_type"] = $this->token_type;
+
         if ($this->token_type == "MAC") {
 
             $aTokenItems = explode(',', $this->token);
@@ -454,15 +455,15 @@ class Token extends Validator {
                 $token = $jwt->parse($this->token);
             }
             catch (InvalidArgumentException $e) {
-                $this->log($e->getMessage());
+                $this->log("invalid arguent: " . $e->getMessage());
             }
             catch (RuntimeException $e) {
-                $this->log($e->getMessage());
+                $this->log("runtime exception: " . $e->getMessage());
             }
 
             if (isset($token)) {
                 $this->token_info["kid"]  = $token->getHeader("kid");
-                $this->token_type = "jwt";
+                $this->token_info["token_type"] = "jwt";
                 $this->jwt_token = $token;
 
                 // $this->token_info["kid"] = $this->token;
