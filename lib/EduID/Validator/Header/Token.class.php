@@ -33,7 +33,7 @@ class Token extends Validator {
         parent::__construct($db);
 
         $this->model = new TokenModel($this->db);
-
+        $this->model->setDebugMode($this->getDebugMode());
         // header level
         $this->accept_list = array("Bearer",
                                    "MAC",

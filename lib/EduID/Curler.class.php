@@ -1,10 +1,12 @@
 <?php
 
 namespace EduID;
+use RESTling\Logger; 
+
 
 use Lcobucci\JWT as JWT;
 
-class Curler {
+class Curler extends Logger {
     private $curl;
     private $protocol;
     private $host;
@@ -52,7 +54,7 @@ class Curler {
             $this->jwtClaims = $claims;
         }
     }
-
+    
     public function setPath($path) {
         if (!empty($path) && is_string($path)) {
             $this->base_url = $path;
@@ -76,7 +78,7 @@ class Curler {
     public function setHeader($p) {
         $this->out_header = $p;
     }
-
+    
     public function resetHeader() {
         $this->out_header = null;
     }
@@ -214,7 +216,13 @@ class Curler {
             $header = "Authorization: Bearer $t";
         }
 
+
         return $header;
+        
+        if (!empty($th)) {
+            
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, $th);
+        }
     }
 
     private function request() {
@@ -253,17 +261,31 @@ class Curler {
 
         return $qs;
     }
+    
+    private function prepareRequest() {
+        
+        if ($this->curl) {
+            curl_close($this->curl);
+        }
+        
+        $c = curl_init($this->next_url);
+        
+        curl_setopt($c, CURLOPT_VERBOSE, $this->getDebugMode());
+//        curl_setopt($c, CURLOPT_FORBID_REUSE, true);
+//        curl_setopt($c, CURLOPT_FRESH_CONNECT, true);
+        
+        curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($c, CURLOPT_CUSTOMREQUEST, $this->next_method );
+        
+        $this->curl = $c;
+    }
 
     public function get($data="") {
         $this->next_method = "GET";
-        $this->prepareUri($data);
-        $c = curl_init($this->next_url);
-
-        $this->curl = $c;
+        $this->prepareUri($data);    
+        $this->prepareRequest();
 
         // curl_setopt($c, CURLOPT_HEADER, true);
-        curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($c, CURLOPT_CUSTOMREQUEST, $this->next_method );
         $this->prepareOutHeader();
 
         $this->request();
@@ -271,18 +293,11 @@ class Curler {
 
     public function post($data, $type) {
         $this->next_method = "POST";
-        $this->prepareUri();
-        $c = curl_init($this->next_url);
-
-        $this->curl = $c;
-
-        // curl_setopt($c, CURLOPT_HEADER, true);
-        curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($c, CURLOPT_CUSTOMREQUEST, $this->next_method );
-
+        $this->prepareUri();   
+        $this->prepareRequest();
         $this->prepareOutHeader($type);
 
-        curl_setopt($c, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
         $this->request();
 
@@ -290,18 +305,11 @@ class Curler {
 
     public function put($data, $type) {
         $this->next_method = "PUT";
-        $this->prepareUri();
-        $c = curl_init($this->next_url);
-
-        $this->curl = $c;
-
-        // curl_setopt($c, CURLOPT_HEADER, true);
-        curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($c, CURLOPT_CUSTOMREQUEST, $this->next_method );
-
+        $this->prepareUri();   
+        $this->prepareRequest();
         $this->prepareOutHeader($type);
 
-        curl_setopt($c, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
         $this->request();
     }
@@ -309,16 +317,8 @@ class Curler {
 
     public function delete($data=""){
         $this->next_method = "DELETE";
-
         $this->prepareUri($data);
-        $c = curl_init($this->next_url);
-
-        $this->curl = $c;
-
-        // curl_setopt($c, CURLOPT_HEADER, true);
-        curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($c, CURLOPT_CUSTOMREQUEST, $this->next_method );
-
+        $this->prepareRequest();
         $this->prepareOutHeader();
 
         $this->request();

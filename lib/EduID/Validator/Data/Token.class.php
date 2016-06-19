@@ -103,6 +103,7 @@ class Token extends Validator {
     protected function validate_post_password() {
         // ckeck if we know the requested user
         $this->user = new UserModel($this->db);
+        $this->user->setDebugMode($this->getDebugMode());
 
         if (!$this->user->findByMailAddress($this->data["username"])) {
             $this->log("user not found");
@@ -130,6 +131,8 @@ class Token extends Validator {
 
         $token = $this->service->getAuthToken();
         $jtm = new TokenModel($this->db);
+        $jtm->setDebugMode($this->getDebugMode());
+        
         if (!$jtm->findToken($kid)) {
             $this->log("jto not found");
             $this->service->not_found();
@@ -151,6 +154,7 @@ class Token extends Validator {
 
         // not find a user
         $um = new UserModel($this->db);
+        $um->setDebugMode($this->getDebugMode());
         if (!$um->findByUUID($jtoken["user_uuid"])) {
             $this->log("user not found");
             $this->service->not_found();

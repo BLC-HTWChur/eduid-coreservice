@@ -6,6 +6,7 @@
 namespace EduID\Validator\Data;
 
 use EduID\Validator\Base as Validator;
+use EduID\Model\User as UserManager;
 
 class UserAuth extends Validator {
     private $user;
@@ -48,6 +49,7 @@ class UserAuth extends Validator {
 
             // ckeck if we know the requested user
             $this->user = new UserManager($this->db);
+            $this->user->setDebugMode($this->getDebugMode());
 
             if (!$this->user->findByMailAddress($this->data["username"])) {
                 $this->log("user not found");

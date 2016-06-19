@@ -103,6 +103,7 @@ class ServiceFoundation extends \RESTling\Service {
 //            $sessionValidator = new SessionValidator($his->db);
 
             $this->tokenValidator   = new TokenValidator($this->db);
+            $this->tokenValidator->setDebugMode($this->getDebugMode());
 
             $this->addHeaderValidator($this->tokenValidator);
 

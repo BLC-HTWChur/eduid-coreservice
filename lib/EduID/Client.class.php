@@ -65,6 +65,7 @@ class Client extends ModelFoundation {
     }
 
     private function load_config() {
+        $this->mark();
         $cfg = ["/etc/eduid", $_SERVER["HOME"] . "/.eduid"];
         $cfgfile = "config.json";
 
@@ -115,6 +116,7 @@ class Client extends ModelFoundation {
     }
 
     private function verify_federation_service() {
+        $this->mark();
         if (!array_key_exists("federation_service", $this->config) &&
             !array_key_exists("f", $this->param)) {
 
@@ -144,6 +146,7 @@ class Client extends ModelFoundation {
             $this->log("fed service ". $fs);
 
             $c = new Curler($fs);
+            $c->setDebugMode($this->getDebugMode());
             $c->get();
 
             if ($c->getStatus() != 403) {
@@ -159,11 +162,13 @@ class Client extends ModelFoundation {
         if ($this->config["federation_service"]) {
             $this->log("init curler using" . $this->config["federation_service"]);
             $this->curl = new Curler($this->config["federation_service"]);
+            $this->curl->setDebugMode($this->getDebugMode());
         }
         return true;
     }
 
     public function authorize() {
+        $this->mark();
         if ($this->client_id) {
             // read client token
             $cliToken = $this->read_config_file($this->configDir . "/client.json");
@@ -234,6 +239,7 @@ class Client extends ModelFoundation {
     }
 
     private function auth_with_server() {
+        $this->mark();
         $this->curl->setPathInfo("token");
 
         $username = readline("email:     ");
@@ -262,6 +268,7 @@ class Client extends ModelFoundation {
     }
 
     private function register_client() {
+        $this->mark();
         $this->curl->setPathInfo("token");
         // client_credentials expects a JWT
         $this->curl->useJwtToken(array(

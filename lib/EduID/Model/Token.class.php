@@ -159,6 +159,7 @@ class Token extends DBManager{
         $tm = null;
         if ($this->token) {
             $tm = new Token($this->db, array("type" => $type));
+            $tm->setDebugMode($this->getDebugMode());
             $tm->setRootToken($this->token);
         }
         return $tm;
@@ -169,6 +170,7 @@ class Token extends DBManager{
             !empty($this->token["user_uuid"])) {
 
             $um = new User($this->db);
+            $um->setDebugMode($this->getDebugMode());
             if ($um->findByUUID($this->token["user_uuid"])) {
                 return $um;
             }
@@ -548,7 +550,8 @@ class Token extends DBManager{
             !empty($this->token)) {
 
             $tm = new Token($this->db);
-
+            $tm->setDebugMode($this->getDebugMode());
+            
             $tm->setRootToken($this->token);
             $tm->setTokenType($type);
 
