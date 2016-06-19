@@ -134,7 +134,6 @@ class Curler extends Logger {
 
         $authType = "prepare_auth_" . $this->token_type;
         
-        $this->log($authType);
         if (method_exists($this, $authType)) {
             $h = call_user_func(array($this,$authType));
             if (!empty($h)) {
@@ -147,10 +146,7 @@ class Curler extends Logger {
                 $th[] = $k . ": " . $v;
             }
         }
-        if (!empty($th)) {
-            
-            $this->log(implode("\n", $th));
-            
+        if (!empty($th)) {            
             curl_setopt($this->curl, CURLOPT_HTTPHEADER, $th);
         }
     }
@@ -158,6 +154,7 @@ class Curler extends Logger {
     private function prepare_auth_mac() {
         $header = "";
 
+        $this->mark();
         if (!empty($this->mac_token)) {
             $oUri= parse_url($this->next_url);
             // sign mac token
@@ -189,7 +186,7 @@ class Curler extends Logger {
 
     private function prepare_auth_jwt() {
         $header = "";
-
+        $this->mark();
         if (!empty($this->mac_token)) {
             $jwt = new JWT\Builder();
 
@@ -239,8 +236,6 @@ class Curler extends Logger {
         $this->status = curl_getinfo($this->curl, CURLINFO_RESPONSE_CODE);
 
         $this->body = $res;
-
-        curl_close($this->curl);
     }
 
     private function prepareQueryString($data) {
@@ -268,7 +263,6 @@ class Curler extends Logger {
     }
     
     private function prepareRequest() {
-        
         if ($this->curl) {
             curl_close($this->curl);
         }
@@ -305,7 +299,6 @@ class Curler extends Logger {
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
         $this->request();
-
     }
 
     public function put($data, $type) {

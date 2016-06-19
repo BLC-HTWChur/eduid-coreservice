@@ -228,6 +228,7 @@ class Client extends ModelFoundation {
                 }
             }
             else {
+                $this->log($this->curl->getBody());
                 $this->user = json_decode($this->curl->getBody(), true);
             }
 
@@ -255,6 +256,7 @@ class Client extends ModelFoundation {
             $this->curl->post(json_encode($data), "application/json");
 
             if ($this->curl->getStatus() == 200) {
+                $this->log($this->curl->getBody());
                 $token = json_decode($this->curl->getBody(), true);
                 $this->write_config_file($this->curl->getBody(),
                                          $this->configDir . "/user.json",
@@ -288,7 +290,9 @@ class Client extends ModelFoundation {
                                      $this->configDir . "/client.json",
                                      true); // always store the client token
 
+            $this->log($this->curl->getBody());
             return json_decode($this->curl->getBody(), true);
+            
         }
         else {
             $this->log("error: " . $this->curl->getStatus());
