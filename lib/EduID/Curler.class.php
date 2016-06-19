@@ -83,7 +83,7 @@ class Curler extends Logger {
         $this->out_header = null;
     }
 
-    public function setMacToken($t) {
+    public function setToken($t) {
         $this->mac_token = $t;
     }
 
@@ -133,6 +133,8 @@ class Curler extends Logger {
         }
 
         $authType = "prepare_auth_" . $this->token_type;
+        
+        $this->log($authType);
         if (method_exists($this, $authType)) {
             $h = call_user_func(array($this,$authType));
             if (!empty($h)) {
@@ -146,6 +148,9 @@ class Curler extends Logger {
             }
         }
         if (!empty($th)) {
+            
+            $this->log(implode("\n", $th));
+            
             curl_setopt($this->curl, CURLOPT_HTTPHEADER, $th);
         }
     }

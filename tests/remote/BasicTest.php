@@ -116,7 +116,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      */
     public function testClientCrendentialsAuth($stack) {
 
-        $stack->curl->setMacToken($stack->clientToken);
+        $stack->curl->setToken($stack->clientToken);
         $stack->curl->setPathInfo("token");
         $stack->curl->useJwtToken(array(
             "subject" => $stack->clientId,
@@ -136,7 +136,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
 
         $stack->instanceToken = json_decode($stack->curl->getBody(), true);
         $stack->curl->useMacToken();
-        $stack->curl->setMacToken($stack->instanceToken);
+        $stack->curl->setToken($stack->instanceToken);
         return $stack;
     }
 
@@ -159,7 +159,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
 
         $stack->adminToken = json_decode($stack->curl->getBody(), true);
 
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
         return $stack;
     }
 
@@ -167,7 +167,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testPasswordAuth
      */
     public function testUserProfile($stack) {
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
 
         $stack->curl->setPathInfo("user-profile");
         $stack->curl->get();
@@ -190,7 +190,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testPasswordAuth
      */
     public function testUserProfileJWT($stack) {
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
 
         $stack->curl->useJwtToken();
 
@@ -251,7 +251,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testPasswordAuth
      */
     public function testAddUser($stack) {
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
         $stack->curl->setPathInfo("user-profile/federation");
 
         $stack->curl->put(json_encode($stack->basicUser), 'application/json');
@@ -262,7 +262,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
         $this->assertEmpty($stack->curl->getBody(), 'Body is Empty!');
 
         // login as user
-        $stack->curl->setMacToken($stack->instanceToken);
+        $stack->curl->setToken($stack->instanceToken);
         $stack->curl->setPathInfo("token");
 
         $data = array("grant_type" => "password",
@@ -279,7 +279,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
         $stack->basicToken = json_decode($stack->curl->getBody(), true);
 
         // if we got here, create a second user for grant testing
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
 
         $stack->curl->setPathInfo("user-profile/federation");
 
@@ -297,7 +297,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testAddUser
      */
     public function testAddUserNonAdmin($stack) {
-        $stack->curl->setMacToken($stack->basicToken);
+        $stack->curl->setToken($stack->basicToken);
 
         $stack->curl->setPathInfo("user-profile/federation");
 
@@ -308,7 +308,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
                             'federation service did not propertly reject the new user '. $stack->curl->getBody());
 
         // login as user
-        $stack->curl->setMacToken($stack->instanceToken);
+        $stack->curl->setToken($stack->instanceToken);
         $stack->curl->setPathInfo("token");
 
         $data = array("grant_type" => "password",
@@ -327,7 +327,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testAddUser
      */
     public function testGetAllClients($stack) {
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
         $stack->curl->setPathInfo("client");
         $stack->curl->get();
 
@@ -346,7 +346,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testAddUser
      */
     public function testAddClient($stack) {
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
         $stack->curl->setPathInfo("client");
         $stack->curl->put(json_encode($stack->client), "application/json");
 
@@ -379,7 +379,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testAddUser
      */
     public function testAddClientUser($stack) {
-        $stack->curl->setMacToken($stack->basicToken);
+        $stack->curl->setToken($stack->basicToken);
         $stack->curl->setPathInfo("client");
         $stack->curl->put(json_encode($client), "application/json");
 
@@ -397,7 +397,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
     public function testGrantClientAdmin($stack) {
 
         $data = array("user_mail" => $stack->basicUser["mailaddress"]);
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
 
         $stack->curl->setPathInfo("client/user/" . $stack->tstCliId);
 
@@ -416,7 +416,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
      * @depends testGrantClientAdmin
      */
     public function testGetUserClients($stack) {
-        $stack->curl->setMacToken($stack->basicToken);
+        $stack->curl->setToken($stack->basicToken);
         $stack->curl->setPathInfo("client");
 
         $stack->curl->get();
@@ -444,7 +444,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
     public function testRevokeClientAdmin($stack) {
         $data = array("user_mail" => $stack->basicUser["mailaddress"]);
 
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
 
         $stack->curl->setPathInfo("client/user/".$stack->tstCliId);
 
@@ -455,7 +455,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
 
         $this->assertEmpty($stack->curl->getBody(), 'Body is not Empty!');
 
-        $stack->curl->setMacToken($stack->basicToken);
+        $stack->curl->setToken($stack->basicToken);
         $stack->curl->setPathInfo("client");
 
         $stack->curl->get();
@@ -474,7 +474,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
     public function testGrantClientUser($stack) {
         // we need a special user that!
         $data = array("user_mail" => $stack->otherUser["mailaddress"]);
-        $stack->curl->setMacToken($stack->basicToken);
+        $stack->curl->setToken($stack->basicToken);
 
         $stack->curl->setPathInfo("client/user/".$stack->tstCliId);
         $stack->curl->put(json_encode($data), "application/json");
@@ -492,7 +492,7 @@ class BasicTest extends PHPUnit_Framework_TestCase
     public function testRevokeClientUser($stack) {
         // temporarily add the other user
         $data = array("user_mail" => $stack->otherUser["mailaddress"]);
-        $stack->curl->setMacToken($stack->adminToken);
+        $stack->curl->setToken($stack->adminToken);
 
         $stack->curl->setPathInfo("client/user/" . $stack->tstCliId);
 
@@ -504,10 +504,10 @@ class BasicTest extends PHPUnit_Framework_TestCase
                             $stack->curl->getStatus());
 
         // swith user and try to revoke
-        $stack->curl->setMacToken($stack->basicToken);
+        $stack->curl->setToken($stack->basicToken);
         $data = array("user_mail" => $stack->otherUser["mailaddress"]);
 
-        $stack->curl->setMacToken($stack->basicToken);
+        $stack->curl->setToken($stack->basicToken);
         $stack->curl->setPathInfo("client/user/" . $stack->tstCliId);
 
         $stack->curl->delete($data);

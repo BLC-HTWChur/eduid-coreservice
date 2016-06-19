@@ -37,10 +37,12 @@ class Client extends ModelFoundation {
 
         // use the actual token reported from the service
         $this->credentials = array(
-            "issuer" => "ch.htwchur.eduid.cli",
+            "client_id" => "ch.htwchur.eduid.cli",
             "kid"    => "1234test-12",
-            "key"    => "helloWorld",
-            "access" => "acf5acfaa58665e6e74f9d03e504b7dce7bc9568",
+            "mac_algorithm"    => "HS256",
+            "mac_key"    => "helloWorld",
+            "access_key" => "acf5acfaa58665e6e74f9d03e504b7dce7bc9568",
+            "token_type" => "Bearer",
             "host"   => gethostname()
         );
 
@@ -187,11 +189,11 @@ class Client extends ModelFoundation {
                     // die("Client refused by server");
                 }
                 $this->curl->useMacToken(); // make explicit that we use MAC headers
-                $this->curl->setMacToken($cliToken);
+                $this->curl->setToken($cliToken);
             }
 
             $this->curl->useMacToken();
-            $this->curl->setMacToken($cliToken);
+            $this->curl->setToken($cliToken);
 
             if (!$usrToken) {
                 $usrToken = $this->auth_with_server();
@@ -205,7 +207,7 @@ class Client extends ModelFoundation {
                 $this->log("user token present");
             }
 
-            $this->curl->setMacToken($usrToken);
+            $this->curl->setToken($usrToken);
 
             // verify the user token.
             $this->curl->setPathInfo("user-profile");
@@ -216,7 +218,7 @@ class Client extends ModelFoundation {
                 $this->log("user token rejected? " . $this->curl->getStatus());
                 $this->log("user token rejected? " . $this->curl->getLastURI());
 
-                $this->curl->setMacToken($cliToken);
+                $this->curl->setToken($cliToken);
                 $this->curl->setPathInfo("token");
                 $usrToken = $this->auth_with_server();
                 if (!$usrToken) {
@@ -230,7 +232,7 @@ class Client extends ModelFoundation {
             }
 
             // OK we are good.
-            $this->curl->setMacToken($usrToken);
+            $this->curl->setToken($usrToken);
             return true;
         }
 
@@ -271,6 +273,7 @@ class Client extends ModelFoundation {
         $this->mark();
         $this->curl->setPathInfo("token");
         // client_credentials expects a JWT
+        $this->curl->setToken($this->credentials);
         $this->curl->useJwtToken(array(
             "subject" => $this->client_id,
             "name"    => $this->credentials["host"]
