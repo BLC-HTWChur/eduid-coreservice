@@ -154,6 +154,7 @@ class Token extends Validator {
     }
 
     public function verifyJWTClaim($claim, $value) {
+        $this->mark();
         if (!empty($value) &&
             !empty($claim) &&
             isset($this->jwt_token) &&
@@ -242,6 +243,7 @@ class Token extends Validator {
 
         // eventually we want to run authorization specific validation
         if (!call_user_func(array($this, $fname))) {
+            $this->log("callback $fname returned false" );
             return false;
         }
 
@@ -260,6 +262,7 @@ class Token extends Validator {
             $this->model->sequenceStep();
         }
 
+        $this->log("OK");
         return true;
     }
 
@@ -297,9 +300,20 @@ class Token extends Validator {
         if(!$this->jwt_token->verify($signer, $this->token_data["mac_key"])) {
 
             $this->log("jwt signature does not match key '" . $this->token_data["mac_key"] . "'");
-            $this->log("using signer '" . $signerClass. "'");
+            $this->log("using signer '" . get_class($signer). "'");
             $this->log("requested signer '" . $this->jwt_token->getHeader("alg") . "'");
-            return false;
+
+            // wait check this
+            if(!$this->jwt_token->verify($signer,
+                                         base64_decode($this->token_data["mac_key"]))) {
+                $this->log("even double base 64 decoding failed");
+                return false;
+            }
+            else {
+                // if this happens the client library expects base64 encoded keys.
+                //
+                $this->log("accepted a double decoded key, not good...");
+            }
         }
 
         if ($this->jwt_token->getClaim("iss") != $this->token_data["client_id"]) {
@@ -460,8 +474,12 @@ class Token extends Validator {
             catch (RuntimeException $e) {
                 $this->log("runtime exception: " . $e->getMessage());
             }
+            finally {
+                $this->log("jwt is done");
+            }
 
             if (isset($token)) {
+                $this->mark();
                 $this->token_info["kid"]  = $token->getHeader("kid");
                 $this->token_info["token_type"] = "jwt";
                 $this->jwt_token = $token;
@@ -469,8 +487,10 @@ class Token extends Validator {
                 // $this->token_info["kid"] = $this->token;
             }
             else {
+                $this->log("jwt parsing has failed");
                 $this->token_info["kid"] = $this->token;
             }
+            $this->log($this->token_type . ", " . $this->token_info["token_type"]);
         }
         else if ($this->token_type == "Basic" ) {
             $this->token_type = null; // we need to find out about the token type
@@ -490,7 +510,7 @@ class Token extends Validator {
     }
 
     private function findToken() {
-        if ($this->model->findToken($this->token_info["kid"])) {
+       if ($this->model->findToken($this->token_info["kid"])) {
 
             $this->token_data = $this->model->next();
 

@@ -33,7 +33,7 @@ if (!empty($serviceName)) {
 }
 
 if (!isset($service)) {
-    (new ErrorService(400 , "no service set"))->run();
+    (new ErrorService(403 , "no service set"))->run();
 }
 else {
     $service->run();
