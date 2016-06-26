@@ -30,19 +30,23 @@ class Curler extends Logger {
         if (empty($options)) {
                 $options = array();
         }
-        if (is_string($options)) {
-            // we got a url
-            $options = parse_url($options);
-        }
-
-        $this->protocol   = array_key_exists("scheme", $options) ? $options["scheme"] : "http";
-        $this->host       = array_key_exists("host", $options) ? $options["host"] : "";
-        $this->base_url   = array_key_exists("path", $options) ? $options["path"] : "";
-        $this->path_info  = array_key_exists("path_info", $options) ? $options["path_info"] : "";
+        $this->setUrl($options);
         $this->param = array();
         $this->out_header = array();
     }
-
+    
+    public function setUrl($options) {
+        if (!empty($options)) {
+            if (is_string($options)) {
+                $options = parse_url($options);
+            }
+            $this->protocol   = array_key_exists("scheme", $options)    ? $options["scheme"]    : "http";
+            $this->host       = array_key_exists("host", $options)      ? $options["host"]      : "";
+            $this->base_url   = array_key_exists("path", $options)      ? $options["path"]      : "";
+            $this->path_info  = array_key_exists("path_info", $options) ? $options["path_info"] : "";
+        }
+    }
+    
     public function useMacToken() {
         $this->token_type = "mac";
     }
@@ -267,6 +271,7 @@ class Curler extends Logger {
             curl_close($this->curl);
         }
         
+        $this->log($this->next_url);
         $c = curl_init($this->next_url);
         
         curl_setopt($c, CURLOPT_VERBOSE, $this->getDebugMode());

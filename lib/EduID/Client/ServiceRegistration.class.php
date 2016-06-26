@@ -22,10 +22,13 @@ class ServiceRegistration extends ClientBase {
 
         if (array_key_exists("u", $this->param)) {
             $this->serviceUrl = $this->param["u"];
+            
+            $this->log("service url: " . $this->serviceUrl);
         }
     }
 
     public function verify_service($servicehome="") {
+        $this->mark();
         $servicehome = trim($servicehome);
 
         if(empty($servicehome)) {
@@ -48,21 +51,29 @@ class ServiceRegistration extends ClientBase {
 
         $s = new Curler($servicehome);
 
-        $s->setPathInfo("service.txt");
+        $s->setPathInfo("services.txt");
         $s->get();
 
         if ($s->getStatus() == 200) {
             $lines = explode("\n" , $s->getBody());
-
+            $this->log($s->getBody());
+            
             foreach ($lines as $line) { // check for services
                 $line = trim($line);
+                $this->log("RSD Line: $line");
                 if (!empty($line)) {
                     list($type, $path) = explode("; ", $line);
 
                     if ($type == "application/x-rsd+json") {
-                        $s->setPath($path);
-                        $s->setPathInfo();
-
+                        if (strpos($path, "https://") === 0 ||
+                            strpos($path, "http://") === 0) {
+                            // service txt files may contain absolute URLs
+                            $s->setUrl($path);
+                        } 
+                        else {
+                            $s->setPath($path);
+                            $s->setPathInfo();
+                        }
                         // get the rsd
                         $s->get();
 

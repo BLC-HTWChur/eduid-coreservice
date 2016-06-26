@@ -162,7 +162,7 @@ class Client extends ModelFoundation {
         }
 
         if ($this->config["federation_service"]) {
-            $this->log("init curler using" . $this->config["federation_service"]);
+            $this->log("init curler using " . $this->config["federation_service"]);
             $this->curl = new Curler($this->config["federation_service"]);
             $this->curl->setDebugMode($this->getDebugMode());
         }
@@ -188,7 +188,7 @@ class Client extends ModelFoundation {
                     return false;
                     // die("Client refused by server");
                 }
-                $this->curl->useMacToken(); // make explicit that we use MAC headers
+                $this->curl->useJwtToken(); 
                 $this->curl->setToken($cliToken);
             }
 

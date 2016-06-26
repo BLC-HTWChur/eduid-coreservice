@@ -73,7 +73,7 @@ class Service extends DBManager{
                     $aTypes[] = "TEXT";
                 }
             }
-
+            
             $sqlstr = "INSERT INTO services (" . implode(",", $aNames) .
                       ") VALUES (".
                       implode(",", array_map(function($e){return "?";}, $aNames)) .
@@ -93,6 +93,20 @@ class Service extends DBManager{
         return $retval;
     }
 
+    public function fetchAllRsdServices() {
+        $sqlstr = "select service_uuid, rsdurl, token from services where rsdurl is not null";
+        $retval = [];
+        
+        $sth = $this->db->prepare($sqlstr, []);
+        $res = $sth->execute();
+        while ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
+            $retval[] = $row;
+        }
+        $sth->free();
+        
+        return $retval;
+    }
+    
     public function findUserServices($user_id) {
         $sqlstr = "SELECT name, mainurl, token_endpoint, info from services s, serviceusers su where su.service_uuid = s.service_uuid and su.user_uuid = ?";
 
@@ -145,6 +159,7 @@ class Service extends DBManager{
         if (!empty($service_id)) {
             return $this->findService(array("service_uuid" => $service_id));
         }
+        return false;
     }
 
     /**
@@ -178,6 +193,160 @@ class Service extends DBManager{
             return $this->findService(array("name" => $name, "like" => "both"));
         }
         return false;
+    }
+    
+    public function getTokenEndpoint() {
+        if (!empty($this->service)) {
+            return $this->service["token_endpoint"];
+        }
+        return null;
+    }
+
+    public function getSignKey() {
+        if (!empty($this->service)) {
+            return $this->service["token"]["key"];
+        }
+        return null;
+    }
+
+    public function getTokenSigner() {
+        // choose token alg
+        $retval = null;
+
+        list($alg, $level) = explode("S", $this->service["token"]["alg"]);
+
+        switch ($alg) {
+            case "H": $alg = "Hmac"; break;
+            case "R": $alg = "Rsa"; break;
+            case "E": $alg = "Ecdsa"; break;
+            default: $alg = ""; break;
+        }
+        switch ($level) {
+            case "256":
+            case "384":
+            case "512":
+                break;
+            default: $level = ""; break;
+        }
+
+        if (!empty($alg) && !empty($level)) {
+            $signerClass = "Lcobucci\\JWT\\Signer\\" .$alg . "\\SHA" . $level;
+            $retval = new $signerClass();
+        }
+
+        return $retval;
+    }
+
+    public function trackUser($options) {
+        if (!empty($this->service) &&
+            !empty($options) &&
+            array_key_exists("user_uuid", $options)) {
+
+            if (!array_key_exists("issued_at", $options)) {
+                $options["issued_at"] = now();
+            }
+
+            $types = ["TEXT", "TEXT", "TEXT"];
+            $values = [$options["issued_at"],
+                       $options["user_uuid"],
+                       $this->service["service_uuid"]];
+
+            $sqlstr = "INSERT INTO serviceusers (last_access, user_uuid, service_uuid) values (?, ?, ?)";
+
+            // did the user previously access the service
+            if ($this->isServiceUser($options["user_uuid"])) {
+                $sqlstr = "update serviceusers set last_access = ? where user_uuid = ? and service_uuid = ?";
+            }
+            $sth = $this->db->prepare($sqlstr, $types);
+            $res = $sth->execute($values);
+            $sth->free();
+        }
+    }
+    
+    public function lastRSDUpdate() {
+        $retval = 0; // EPOCH
+        if (!empty($this->service) && 
+            array_key_exists("service_uuid", $this->service) &&
+            !empty($this->service["service_uuid"])) {
+            
+            $sqlstr = "select last_update from serviceprotocols where service_uuid = ?";
+            $sth = $this->db->prepare($sqlstr, ["TEXT"]);
+            $res = $sth->execute([$this->service["service_uuid"]]);
+            
+            if ($row = $res->fetchRow()) {
+                $retval = $row[0];
+            }
+            $sth->free();
+        }
+        return $retval;
+    }
+    
+    // this method is used by the cron script
+    public function updateServiceRSD($rsdString) {
+        if (!empty($rsdString) && 
+            !empty($this->service) &&
+            array_key_exists("service_uuid", $this->service) &&
+            strlen($this->service["service_uuid"])) {
+            
+            // test if the RSD is already present
+            if ($this->lastRSDUpdate() > 0) {
+                $this->log("update");
+                $sqlstr = "update serviceprotocols set rsd = ?, last_update = ? where service_uuid = ?";
+            }
+            else {
+                $this->log("insert");
+                $sqlstr = "insert into serviceprotocols (rsd, last_update, service_uuid) values (?,?,?)";
+            }
+            
+            $now = time();
+            $sth = $this->db->prepare($sqlstr, ["TEXT", "INTEGER", "TEXT"]);
+            $res = $sth->execute([$rsdString, $now, $this->service["service_uuid"]]);
+            
+            $sth->free();
+            
+            // extract and update the protocols
+            $rsd  = json_decode($rsdString, true);
+            $apis = $rsd["apis"];
+            $rsdNames = array_keys($apis);
+            $extNames = [];
+            
+            // find existing protocols
+            $sqlstr = "select rsd_name from protocolnames where service_uuid = ?";
+            
+            $sth = $this->db->prepare($sqlstr, ["TEXT"]);
+            
+            $res = $sth->execute([$this->service["service_uuid"]]);
+            
+            while ($row = $res->fetchRow()) {
+                $extNames[] = $row[0];
+            }
+            
+            $sth->free();
+            
+            // add all non existing names
+            $newsql = "insert into protocolnames (service_uuid, rsd_name) values (?, ?)";
+            $sthi= $this->db->prepare($newsql, ["TEXT", "TEXT"]);
+            
+            foreach ($rsdNames as $pname)  {
+                if (!in_array($pname, $extNames)) {
+                    $sthi->execute([$this->service["service_uuid"], $pname]);
+                }                
+            }
+            
+            $sthi->free();
+            
+            // remove all non-existing names
+            $delsql = "delete from protocolnames where service_uuid = ? and rsd_name = ?";
+            $sthd= $this->db->prepare($delsql, ["TEXT", "TEXT"]);
+            
+            foreach ($extNames as $pname)  {
+               if (!in_array($pname, $rsdNames)) {
+                    $sthd->execute([$this->service["service_uuid"], $pname]);
+                }
+            }
+            
+            $sthd->free();
+        }
     }
 
     private function findService($options=array()) {
@@ -252,74 +421,6 @@ class Service extends DBManager{
         }
 
         return false;
-    }
-
-    public function getTokenEndpoint() {
-        if (!empty($this->service)) {
-            return $this->service["token_endpoint"];
-        }
-        return null;
-    }
-
-    public function getSignKey() {
-        if (!empty($this->service)) {
-            return $this->service["token"]["key"];
-        }
-        return null;
-    }
-
-    public function getTokenSigner() {
-        // choose token alg
-        $retval = null;
-
-        list($alg, $level) = explode("S", $this->service["token"]["alg"]);
-
-        switch ($alg) {
-            case "H": $alg = "Hmac"; break;
-            case "R": $alg = "Rsa"; break;
-            case "E": $alg = "Ecdsa"; break;
-            default: $alg = ""; break;
-        }
-        switch ($level) {
-            case "256":
-            case "384":
-            case "512":
-                break;
-            default: $level = ""; break;
-        }
-
-        if (!empty($alg) && !empty($level)) {
-            $signerClass = "Lcobucci\\JWT\\Signer\\" .$alg . "\\SHA" . $level;
-            $retval = new $signerClass();
-        }
-
-        return $retval;
-    }
-
-    public function trackUser($options) {
-        if (!empty($this->service) &&
-            !empty($options) &&
-            array_key_exists("user_uuid", $options)) {
-
-            if (!array_key_exists("issued_at", $options)) {
-                $options["issued_at"] = now();
-            }
-
-            $types = ["TEXT", "TEXT", "TEXT"];
-            $values = [$options["issued_at"],
-                       $options["user_uuid"],
-                       $this->service["service_uuid"]];
-
-            $sqlstr = "INSERT INTO serviceusers (last_access, user_uuid, service_uuid) values (?, ?, ?)";
-
-            // did the user previously access the service
-            if ($this->isServiceUser($options["user_uuid"])) {
-                $sqlstr = "update serviceusers set last_access = ? where user_uuid = ? and service_uuid = ?";
-            }
-            $sth = $this->db->prepare($sqlstr, $types);
-            $res = $sth->execute($values);
-            $sth->free();
-        }
     }
 
     private function isServiceUser($user) {
