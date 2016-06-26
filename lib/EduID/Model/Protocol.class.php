@@ -35,7 +35,10 @@ class Protocol extends DBManager {
     }
 
     public function findRsdWithProtocolList($list) {
-        $sqlstr = "SELECT DISTINCT " . implode(",", array_keys($this->dbKeys))
+        $k = array_keys($this->dbKeys);
+        $k = array_map(function ($e) { return "sp." . $e; }, $k);
+
+        $sqlstr = "SELECT DISTINCT " . implode(",", $k)
                 . " FROM serviceprotocols sp, protocolnames p"
                 . " WHERE p.service_uuid = sp.service_uuid AND p.rsd_name IN ("
                 . implode(",", $this->quoteList($list))
@@ -49,8 +52,10 @@ class Protocol extends DBManager {
         while ($row = $res->fetchRow(MDB2_FETCHMODE_ASSOC)) {
             $rsd = json_decode($row["rsd"], true);
 
+            $apis = $rsd["apis"];
+            
             foreach ($list as $api) {
-                if (!array_key_exists($api, $rsd)) {
+                if (!array_key_exists($api, $apis)) {
                     $rsd = null;
                     break;
                 }
@@ -61,7 +66,7 @@ class Protocol extends DBManager {
         }
 
         $sth->free();
-
+        return $service_list;
     }
 
     private function quoteList($list) {

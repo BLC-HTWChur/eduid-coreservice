@@ -16,6 +16,11 @@ class ProtocolDiscovery extends ServiceFoundation {
 
     protected function initializeRun() {
         $this->model = new Protocol($this->db);
+        
+        $this->tokenValidator->resetAcceptedTokens(array("Bearer", "MAC"));
+        $this->tokenValidator->setAcceptedTokenTypes(array("Bearer", "MAC"));
+        $this->tokenValidator->requireUser();
+        $this->tokenValidator->requireClient();
     }
 
     /**
@@ -34,7 +39,7 @@ class ProtocolDiscovery extends ServiceFoundation {
      * request services for a list of protocols
      * - include service that match all listed protocols
      */
-    protected function post_potocol() {
+    protected function post_protocol() {
         // expect a list of protocol names
         $this->data = $this->model->findRSDWithProtocolList($this->inputData);
         if (!$this->data) {
