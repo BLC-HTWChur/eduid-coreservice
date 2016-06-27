@@ -151,49 +151,8 @@ class Token extends ServiceFoundation {
     protected function post_authorization_code() { // RFC6749 Section 4.1
         // service needs to be validated by tokendata validator
 
-            // $token = $this->getAuthToken();
-        $tokenType = "Assertion"; // we will never test this ourselves in the authorization header
-
-        $tm = $this->tokenValidator->getTokenIssuer($tokenType);
-
-        $user = $this->tokenValidator->getTokenUser();
-
-        $user->loadProfileIdentities();
-        $profiles = $user->getAllProfiles();
-        $profile  = $profiles[0]["extra"];
-        $profile["email"] = $profiles[0]["mailaddress"];
-
-        $tm = $this->tokenValidator->getTokenIssuer($tokenType);
-
-        $tm->addToken(array("service_uuid"=>$this->serviceManager->getUUID()));
-
-        $token = $tm->getToken();
-
-        $jwt = new JWT\Builder();
-
-        $jwt->setIssuer('https://eduid.htwchur.ch');
-
-        $jwt->setAudience($this->serviceManager->getTokenEndpoint()); // the client MUST sent the endpoint
-        $jwt->setId($token["kid"]);
-        $jwt->setIssuedAt($token["issued_at"]);
-        $jwt->setExpiration($token["issued_at"] + 3600); //1h valid - FIXME make configurable
-
-        $jwt->setSubject($profiles[0]["userid"]); // eduid ID
-
-        $jwt->set("azp", $token["extra"]["client_type"]);
-
-        foreach (array("name", "given_name", "family_name", "email") as $k) {
-            $jwt->set($k, $profile[$k]);
-        }
-
-        $jwt->sign($this->serviceManager->getTokenSigner(),
-                   $this->serviceManager->getSignKey());
-
-        $this->data = array(
-            "access_token" => (string) $jwt->getToken(),
-            "token_type"   => "urn:ietf:oauth:param:jwt-bearer",
-            "redirect_uri" => $this->serviceManager->getTokenEndpoint()
-        );
+        // we don't allow code authorisation here (well, we are the authority)
+        $this->forbidden(json_encode(["error"=>"invalid_scope"]));
     }
 
     protected function post_validate() {
