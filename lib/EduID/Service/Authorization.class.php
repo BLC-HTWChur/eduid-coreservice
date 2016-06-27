@@ -30,10 +30,13 @@ class Authorization extends ServiceFoundation {
         $this->setOperationParameter("request_type");
         $this->tokenValidator->resetAcceptedTokens("Bearer");
 
+        // the internal representation requires a token type;
+        $this->tokenValidator->requireUser();
+        $this->tokenValidator->requireClient();
+
         $this->dataValidator = new TokenDataValidator($this->db);
         $this->addDataValidator($this->dataValidator);
     }
-
 
     public function verifyRawToken($code) {
         return $this->tokenValidator->verifyRawToken($code);
@@ -59,12 +62,13 @@ class Authorization extends ServiceFoundation {
     }
 
     protected function post_code() {
+        // clients MUST present a user token
+        // as specficied by RFC 6749
+        // obtain access code as assertion JWT as specified in RFC 7521
         $token = $this->getAuthToken();
 
         $redirectUri = $this->inputData["redirect_uri"];
         $clientId    = $this->inputData["client_id"];
-
-
     }
 }
 
