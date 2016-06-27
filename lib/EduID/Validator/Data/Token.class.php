@@ -35,15 +35,24 @@ class Token extends Validator {
                 case "password": // Section 4.3.2
                     $aFields = array("username", "password");
                     break;
+                case "jwt_assertion":
+                    // scope is optional
+                    $aFields = array("assertion");
+                    break;
                 case "client_credentials": // Section 4.4
                 default:
                     break;
             }
-
-            if (!$this->checkDataFields($aFields)) {
-                // problem already logged
-                return false;
+        }
+        else if (array_key_exists("request_type", $this->data)) {
+            if ($this->data["request_data"] == "code") {
+                $aFields = array("client_id", "redirect_uri");
             }
+        }
+
+        if (!$this->checkDataFields($aFields)) {
+            // problem already logged
+            return false;
         }
 
         return true;
@@ -113,6 +122,23 @@ class Token extends Validator {
         return true;
     }
 
+    protected function validate_post_code() {
+        $token = $this->service->getAuthToken();
+        if ($token["client_id"] != $this->data["client_id"]) {
+            $this->log("client id mismatch");
+            return false;
+        }
+
+        // verify that we know the redirect URI
+        $service = $this->service->getTargetService();
+        if (!$service->findServiceByURI($this->data["redirect_uri"])) {
+            $this->log("target uri not found");
+            return false;
+        }
+
+        return true;
+    }
+
     protected function validate_post_validate() {
         // the JTI must be issued to the same service UUID as the authToken
 
@@ -132,7 +158,7 @@ class Token extends Validator {
         $token = $this->service->getAuthToken();
         $jtm = new TokenModel($this->db);
         $jtm->setDebugMode($this->getDebugMode());
-        
+
         if (!$jtm->findToken($kid)) {
             $this->log("jto not found");
             $this->service->not_found();

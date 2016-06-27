@@ -60,6 +60,22 @@ class Token extends ServiceFoundation {
         return $this->serviceManager;
     }
 
+    protected function prepareOperation() {
+        // this is a helper to set the assertion grant to something we can handle.
+        // this small hack is needed make post_jwt_assertion() calls possible.
+        $assertion_type = 'urn:ietf:param:oauth:grant-type:jwt-bearer';
+        $assertion_name = 'jwt_assertion';
+
+        if ($this->inputData &&
+            array_key_exists("grant_type", $this->inputData) &&
+            $this->inputData["grant_type"] == $assertion_type) {
+
+            $this->inputData["grant_type"] = $assertion_name;
+        }
+
+        parent::prepareOperation();
+    }
+
     protected function post_password() { // OAuth2 Section 4.3.2
         $token = $this->getAuthToken();
         $tokenType = "MAC";
@@ -126,10 +142,16 @@ class Token extends ServiceFoundation {
         }
     }
 
-    protected function post_authorization_code() {
+
+    protected function post_jwt_assertion() {
+        // RFC 7121 defines this as 'urn:ietf:param:oauth:grant-type:jwt-bearer'
+
+    }
+
+    protected function post_authorization_code() { // RFC6749 Section 4.1
         // service needs to be validated by tokendata validator
 
-        // $token = $this->getAuthToken();
+            // $token = $this->getAuthToken();
         $tokenType = "Assertion"; // we will never test this ourselves in the authorization header
 
         $tm = $this->tokenValidator->getTokenIssuer($tokenType);
