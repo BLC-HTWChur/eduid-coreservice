@@ -29,14 +29,18 @@ if (!empty($serviceName)) {
 
     $serviceName .= implode("", array_map(function($v) {return ucfirst(strtolower($v));}, $ts));
 
-    $service = new $serviceName();
+    if (class_exists($serviceName, true)) {
+        $service = new $serviceName();
+    }
+    else {
+        $service = new ErrorService(501 , "service does not exist!");
+    }
 }
 
 if (!isset($service)) {
-    (new ErrorService(403 , "no service set"))->run();
+    $service = new ErrorService(403 , "no service set");
 }
-else {
-    $service->run();
-}
+
+$service->run();
 
 ?>

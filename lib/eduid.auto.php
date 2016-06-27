@@ -41,16 +41,4 @@ spl_autoload_register(function ($class) {
     }
 });
 
-register_shutdown_function(function () {
-    $error = error_get_last();
-    if ($error !== NULL && $error["type"] === E_ERROR) {
-        error_log("FATAL******** " . $error["message"]);
-        http_response_code(501);
-        // (new \EduID\Service\Error(501, $error["message"]))->run();
-    }
-    return false;
-});
-
-
-
 ?>
