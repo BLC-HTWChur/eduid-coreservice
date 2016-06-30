@@ -7,7 +7,8 @@ namespace EduID\Service;
 
 use EduID\Validator\Data\Token as TokenDataValidator;
 use EduID\Model\User;
-use EduID\Model\Service;
+use EduID\Model\Service as ServiceManager;
+use EduID\ServiceFoundation;
 
 //
 //require_once("Models/class.EduIDValidator.php");
@@ -34,8 +35,8 @@ class Authorization extends ServiceFoundation {
         $this->tokenValidator->requireUser();
         $this->tokenValidator->requireClient();
 
-        $this->dataValidator = new TokenDataValidator($this->db);
-        $this->addDataValidator($this->dataValidator);
+//        $this->dataValidator = new TokenDataValidator($this->db);
+//        $this->addDataValidator($this->dataValidator);
     }
 
     public function verifyRawToken($code) {
@@ -65,25 +66,32 @@ class Authorization extends ServiceFoundation {
         // clients MUST present a user token
         // as specficied by RFC 6749 (there it says that users must authorize)
         // obtain access code as assertion JWT as specified in RFC 7521
-        
+        $this->mark();
+
         $token = $this->getAuthToken();
 
         $redirectUri = $this->inputData["redirect_uri"];
         $clientId    = $this->inputData["client_id"];
-        $state       = $this->inputData["state"];
-        
+        if (array_key_exists("state", $this->inputData)) {
+            $state       = $this->inputData["state"];
+        }
+
         // create Token
         $tm = $this->tokenValidator->getTokenIssuer("Assertion");
-        
+
         $user = $this->tokenValidator->getTokenUser();
         $user->loadProfileIdentities();
         $profiles = $user->getAllProfiles();
         $profile  = $profiles[0]["extra"];
         $profile["email"] = $profiles[0]["mailaddress"];
 
-        $tm = $this->tokenValidator->getTokenIssuer($tokenType);
+        $sm = $this->getTargetService();
+        if (!$sm->findServiceByURI($redirectUri)) {
+            $this->log("$redirectUri no found");
+            return;
+        }
 
-        $tm->addToken(array("service_uuid"=>$this->serviceManager->getUUID()));
+        $tm->addToken(array("service_uuid" => $sm->getUUID()));
 
         $token = $tm->getToken();
 
@@ -91,12 +99,12 @@ class Authorization extends ServiceFoundation {
 
         $jwt->setIssuer('https://eduid.htwchur.ch');
 
-        $jwt->setAudience($this->serviceManager->getTokenEndpoint()); // the client MUST sent the endpoint
+        $jwt->setAudience($sm->getTokenEndpoint()); // the client MUST sent the endpoint
         $jwt->setId($token["kid"]);
         $jwt->setIssuedAt($token["issued_at"]);
         $jwt->setExpiration($token["issued_at"] + 3600); //1h valid - FIXME make configurable
 
-        $jwt->setSubject($profiles[0]["userid"]); // eduid ID
+        $jwt->setSubject($profiles[0]["mailaddress"]); // eduid ID
 
         $jwt->set("azp", $token["extra"]["client_type"]);
 
@@ -104,11 +112,12 @@ class Authorization extends ServiceFoundation {
             $jwt->set($k, $profile[$k]);
         }
 
-        $jwt->sign($this->serviceManager->getTokenSigner(),
-                   $this->serviceManager->getSignKey());
+        $jwt->sign($sm->getTokenSigner(),
+                   $sm->getSignKey());
 
         $this->data = array(
             "code" => (string) $jwt->getToken(),
+            "redirect_uri" => $this->serviceManager->getTokenEndpoint()
         );
         if (!empty($state)) {
             $this->data["state"] = $state;

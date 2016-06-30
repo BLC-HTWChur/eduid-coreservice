@@ -13,7 +13,7 @@ class Client extends ModelFoundation {
 
     protected $param;
 
-    private $config;
+    protected $config;
     private $configFile;
     private $configDir;
 
@@ -22,10 +22,10 @@ class Client extends ModelFoundation {
     private $writeConfig = false;
 
     private $clientToken;
-    private $userToken;
+    protected $userToken;
 
     private $credentials;
-    private $client_id;
+    protected $client_id;
 
     protected $user;
 
@@ -188,7 +188,7 @@ class Client extends ModelFoundation {
                     return false;
                     // die("Client refused by server");
                 }
-                $this->curl->useJwtToken(); 
+                $this->curl->useJwtToken();
                 $this->curl->setToken($cliToken);
             }
 
@@ -234,6 +234,7 @@ class Client extends ModelFoundation {
 
             // OK we are good.
             $this->curl->setToken($usrToken);
+            $this->userToken = $usrToken;
             return true;
         }
 
@@ -292,7 +293,7 @@ class Client extends ModelFoundation {
 
             $this->log($this->curl->getBody());
             return json_decode($this->curl->getBody(), true);
-            
+
         }
         else {
             $this->log("error: " . $this->curl->getStatus());

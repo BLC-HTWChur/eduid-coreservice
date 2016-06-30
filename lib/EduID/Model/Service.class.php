@@ -204,7 +204,7 @@ class Service extends DBManager{
 
     public function getSignKey() {
         if (!empty($this->service)) {
-            return $this->service["token"]["key"];
+            return $this->service["token"]["mac_key"];
         }
         return null;
     }
@@ -213,7 +213,7 @@ class Service extends DBManager{
         // choose token alg
         $retval = null;
 
-        list($alg, $level) = explode("S", $this->service["token"]["alg"]);
+        list($alg, $level) = explode("S", $this->service["token"]["mac_algorithm"]);
 
         switch ($alg) {
             case "H": $alg = "Hmac"; break;
@@ -382,6 +382,9 @@ class Service extends DBManager{
             }
             if (!empty($filter)) {
                 $sqlstr .= implode(" OR ", $filter);
+
+                $this->log($sqlstr);
+                $this->log(implode(" ", $values));
 
                 $sth = $this->db->prepare($sqlstr, $types);
                 $res = $sth->execute($values);
