@@ -8,7 +8,7 @@ use EduID\Curler;
 
 class Client extends ModelFoundation {
 
-    protected $paramShort = "c:f:Cxvt";
+    protected $paramShort = "c:f:Cxvtk";
     protected $paramLong = "";
 
     protected $param;
