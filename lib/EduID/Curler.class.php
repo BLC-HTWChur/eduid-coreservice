@@ -1,7 +1,7 @@
 <?php
 
 namespace EduID;
-use RESTling\Logger; 
+use RESTling\Logger;
 
 
 use Lcobucci\JWT as JWT;
@@ -20,7 +20,7 @@ class Curler extends Logger {
     private $out_header;
     private $in_header;
     private $mac_token;
-    private $token_type = "mac";
+    private $token_type = "jwt";
     private $jwtClaims = array();
 
     private $next_url;
@@ -34,7 +34,7 @@ class Curler extends Logger {
         $this->param = array();
         $this->out_header = array();
     }
-    
+
     public function setUrl($options) {
         if (!empty($options)) {
             if (is_string($options)) {
@@ -46,7 +46,7 @@ class Curler extends Logger {
             $this->path_info  = array_key_exists("path_info", $options) ? $options["path_info"] : "";
         }
     }
-    
+
     public function useMacToken() {
         $this->token_type = "mac";
     }
@@ -58,7 +58,7 @@ class Curler extends Logger {
             $this->jwtClaims = $claims;
         }
     }
-    
+
     public function setPath($path) {
         if (!empty($path) && is_string($path)) {
             $this->base_url = $path;
@@ -82,7 +82,7 @@ class Curler extends Logger {
     public function setHeader($p) {
         $this->out_header = $p;
     }
-    
+
     public function resetHeader() {
         $this->out_header = null;
     }
@@ -137,7 +137,7 @@ class Curler extends Logger {
         }
 
         $authType = "prepare_auth_" . $this->token_type;
-        
+
         if (method_exists($this, $authType)) {
             $h = call_user_func(array($this,$authType));
             if (!empty($h)) {
@@ -150,7 +150,7 @@ class Curler extends Logger {
                 $th[] = $k . ": " . $v;
             }
         }
-        if (!empty($th)) {            
+        if (!empty($th)) {
             curl_setopt($this->curl, CURLOPT_HTTPHEADER, $th);
         }
     }
@@ -224,9 +224,9 @@ class Curler extends Logger {
 
 
         return $header;
-        
+
         if (!empty($th)) {
-            
+
             curl_setopt($this->curl, CURLOPT_HTTPHEADER, $th);
         }
     }
@@ -265,28 +265,28 @@ class Curler extends Logger {
 
         return $qs;
     }
-    
+
     private function prepareRequest() {
         if ($this->curl) {
             curl_close($this->curl);
         }
-        
+
         $this->log($this->next_url);
         $c = curl_init($this->next_url);
-        
+
         curl_setopt($c, CURLOPT_VERBOSE, $this->getDebugMode());
 //        curl_setopt($c, CURLOPT_FORBID_REUSE, true);
 //        curl_setopt($c, CURLOPT_FRESH_CONNECT, true);
-        
+
         curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($c, CURLOPT_CUSTOMREQUEST, $this->next_method );
-        
+
         $this->curl = $c;
     }
 
     public function get($data="") {
         $this->next_method = "GET";
-        $this->prepareUri($data);    
+        $this->prepareUri($data);
         $this->prepareRequest();
 
         // curl_setopt($c, CURLOPT_HEADER, true);
@@ -297,7 +297,7 @@ class Curler extends Logger {
 
     public function post($data, $type) {
         $this->next_method = "POST";
-        $this->prepareUri();   
+        $this->prepareUri();
         $this->prepareRequest();
         $this->prepareOutHeader($type);
 
@@ -308,7 +308,7 @@ class Curler extends Logger {
 
     public function put($data, $type) {
         $this->next_method = "PUT";
-        $this->prepareUri();   
+        $this->prepareUri();
         $this->prepareRequest();
         $this->prepareOutHeader($type);
 
