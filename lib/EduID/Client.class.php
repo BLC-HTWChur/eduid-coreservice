@@ -148,6 +148,11 @@ class Client extends ModelFoundation {
             $this->log("fed service ". $fs);
 
             $c = new Curler($fs);
+
+            if (array_key_exists("k", $this->param)) {
+                $c->ignoreSSLCertificate();
+            }
+
             $c->setDebugMode($this->getDebugMode());
             $c->get();
 

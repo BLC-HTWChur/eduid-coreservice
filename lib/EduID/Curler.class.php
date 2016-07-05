@@ -12,6 +12,7 @@ class Curler extends Logger {
     private $host;
     private $base_url;
     private $path_info;
+    private $verifySSL = 1;
 
     private $param;
     private $body;
@@ -45,6 +46,10 @@ class Curler extends Logger {
             $this->base_url   = array_key_exists("path", $options)      ? $options["path"]      : "";
             $this->path_info  = array_key_exists("path_info", $options) ? $options["path_info"] : "";
         }
+    }
+
+    public function ignoreSSLCertificate() {
+        $this->verifySSL = 0;
     }
 
     public function useMacToken() {
@@ -90,6 +95,7 @@ class Curler extends Logger {
     public function setToken($t) {
         $this->mac_token = $t;
     }
+
 
     private function prepareUri($data="") {
         $this->path_info = ltrim($this->path_info, "/");
@@ -273,6 +279,9 @@ class Curler extends Logger {
 
         $this->log($this->next_url);
         $c = curl_init($this->next_url);
+
+        curl_setopt($c, CURLOPT_SSL_VERIFYHOST, $this->verifySSL);
+        curl_setopt($c, CURLOPT_SSL_VERIFYPEER, $this->verifySSL);
 
         curl_setopt($c, CURLOPT_VERBOSE, $this->getDebugMode());
 //        curl_setopt($c, CURLOPT_FORBID_REUSE, true);
