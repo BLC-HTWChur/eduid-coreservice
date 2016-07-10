@@ -87,7 +87,7 @@ class Authorization extends ServiceFoundation {
 
         $sm = $this->getTargetService();
         if (!$sm->findServiceByURI($redirectUri)) {
-            $this->log("$redirectUri no found");
+            $this->not_found("$redirectUri no found");
             return;
         }
 
