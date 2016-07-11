@@ -9,7 +9,7 @@ require_once('MDB2.php');
 
 use EduID\Model\User as UserModel;
 
-$aCfg = parse_ini_file('../../config/eduid.ini', true);
+$aCfg = parse_ini_file('/etc/eduid/eduid.ini', true);
 
 $dbCfg = $aCfg["database"];
 

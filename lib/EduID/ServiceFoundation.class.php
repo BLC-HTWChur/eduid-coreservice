@@ -35,7 +35,7 @@ class ServiceFoundation extends \RESTling\Service {
     private function loadConfiguration() {
 
         try {
-            $aCfg = parse_ini_file('config/eduid.ini', true);
+            $aCfg = parse_ini_file('/etc/eduid/eduid.ini', true);
         }
         catch (Exception $e) {
             $this->fatal($e->getMessage());

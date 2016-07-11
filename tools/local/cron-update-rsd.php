@@ -6,7 +6,7 @@ set_include_path("../../lib" . PATH_SEPARATOR .
 include_once('eduid.auto.php');
 require_once('MDB2.php');
 
-$aCfg = parse_ini_file('../../config/eduid.ini', true);
+$aCfg = parse_ini_file('/etc/eduid/eduid.ini', true);
 
 $dbCfg = $aCfg["database"];
 
