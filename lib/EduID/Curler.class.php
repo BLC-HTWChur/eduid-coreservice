@@ -280,8 +280,8 @@ class Curler extends Logger {
         $this->log($this->next_url);
         $c = curl_init($this->next_url);
 
-        curl_setopt($c, CURLOPT_SSL_VERIFYHOST, $this->verifySSL);
-        curl_setopt($c, CURLOPT_SSL_VERIFYPEER, $this->verifySSL);
+        curl_setopt($c, CURLOPT_SSL_VERIFYHOST, $this->verifySSL ? 2 : 0);
+        curl_setopt($c, CURLOPT_SSL_VERIFYPEER, $this->verifySSL ? 1 : 0);
 
         curl_setopt($c, CURLOPT_VERBOSE, $this->getDebugMode());
 //        curl_setopt($c, CURLOPT_FORBID_REUSE, true);
