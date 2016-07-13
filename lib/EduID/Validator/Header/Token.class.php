@@ -317,7 +317,7 @@ class Token extends Validator {
         }
 
         if ($this->jwt_token->getClaim("iss") != $this->token_data["client_id"]) {
-            $this->log("jwt issuer does not match");
+            $this->log("jwt issuer does not match for " . $this->token_data["kid"] . " and " . $this->operation);
             $this->log("expected: " . $this->token_data["client_id"]);
             $this->log("received: " . $this->jwt_token->getClaim("iss"));
             return false;

@@ -170,25 +170,27 @@ class Curler extends Logger {
             // sign mac token
             $signer = $this->getSigner($this->mac_token["mac_algorithm"]);
 
-            // generate payload
-            $ts = time();
+            if ($signer) {
+                // generate payload
+                $ts = time();
 
-            $payload = $this->next_method . " " . $oUri["path"];
-            if (array_key_exists("query", $oUri)) {
-                $payload .= "?". $oUri["query"];
+                $payload = $this->next_method . " " . $oUri["path"];
+                if (array_key_exists("query", $oUri)) {
+                    $payload .= "?". $oUri["query"];
+                }
+                $payload .= " HTTP/1.1\n";
+                $payload .= "$ts\n";
+                $payload .= $oUri["host"] . "\n";
+
+                $authHeader = array(
+                    "kid=" . $this->mac_token["kid"],
+                    "ts=$ts",
+                );
+
+                $authHeader[] = "mac=" . base64_encode($signer->sign($payload, $this->mac_token["mac_key"]));
+
+                $header = "Authorization: MAC " . implode(',', $authHeader);
             }
-            $payload .= " HTTP/1.1\n";
-            $payload .= "$ts\n";
-            $payload .= $oUri["host"] . "\n";
-
-            $authHeader = array(
-                "kid=" . $this->mac_token["kid"],
-                "ts=$ts",
-            );
-
-            $authHeader[] = "mac=" . base64_encode($signer->sign($payload, $this->mac_token["mac_key"]));
-
-            $header = "Authorization: MAC " . implode(',', $authHeader);
         }
 
         return $header;
@@ -198,6 +200,8 @@ class Curler extends Logger {
         $header = "";
         $this->mark();
         if (!empty($this->mac_token)) {
+            $this->log(json_encode($this->mac_token));
+
             $jwt = new JWT\Builder();
 
             $jwt->setIssuer($this->mac_token["client_id"]);
@@ -217,15 +221,15 @@ class Curler extends Logger {
                 }
             }
 
-
             $signer = $this->getSigner($this->mac_token["mac_algorithm"]);
+            if ($signer) {
+                $jwt->sign($signer,
+                           $this->mac_token["mac_key"]);
 
-            $jwt->sign($signer,
-                       $this->mac_token["mac_key"]);
+                $t = $jwt->getToken();
 
-            $t = $jwt->getToken();
-
-            $header = "Authorization: Bearer $t";
+                $header = "Authorization: Bearer $t";
+            }
         }
 
 

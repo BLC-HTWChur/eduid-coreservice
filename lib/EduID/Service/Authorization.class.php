@@ -106,7 +106,7 @@ class Authorization extends ServiceFoundation {
 
         $jwt->setSubject($profiles[0]["mailaddress"]); // eduid ID
 
-        $jwt->set("azp", $token["extra"]["client_type"]);
+        $jwt->set("azp", $clientId);
 
         foreach (array("name", "given_name", "family_name", "email") as $k) {
             $jwt->set($k, $profile[$k]);

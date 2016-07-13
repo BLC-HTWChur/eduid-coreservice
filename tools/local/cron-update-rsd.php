@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 set_include_path("../../lib" . PATH_SEPARATOR .
                 get_include_path());
@@ -44,11 +44,15 @@ else {
             $lastupdate = $sm->lastRSDUpdate();
 
             if (($now - $lastupdate) > 86500) {
-    
+
                 error_log("$now: update service " . $sd["service_uuid"] . "($lastupdate)");
-                
+
                 $curl->setUrl($sd["rsdurl"]);
-                $curl->setToken($sd["token"]);
+
+                $t = json_decode($sd["token"], true);
+                $t["client_id"] = "https://eduid.htwchur.ch"; // this MUST be configurable
+
+                $curl->setToken($t);
                 $curl->useJwtToken();
 
                 $curl->get(); // get the RSD (using our JWT)
@@ -58,10 +62,10 @@ else {
                 }
                 else {
                     $now = time();
-                    error_log("$now: service " . 
-                              $sd["service_uuid"] . 
-                              "returned with error: " . 
-                              $curl->getStatus() . 
+                    error_log("$now: service " .
+                              $sd["service_uuid"] .
+                              "returned with error: " .
+                              $curl->getStatus() .
                               ": " . $curl->getBody());
                 }
             }
