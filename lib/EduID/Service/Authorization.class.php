@@ -71,6 +71,10 @@ class Authorization extends ServiceFoundation {
         $token = $this->getAuthToken();
 
         $redirectUri = $this->inputData["redirect_uri"];
+
+        // trim trailing slashes.
+        $redirectUri = rtrim($redirectUri, "/");
+
         $clientId    = $this->inputData["client_id"];
         if (array_key_exists("state", $this->inputData)) {
             $state       = $this->inputData["state"];
